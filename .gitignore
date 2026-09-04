@@ -1,0 +1,10 @@
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.coverage
+*.pyc
+__pycache__/
+CLAUDE.md
+en.subject.pdf
+
