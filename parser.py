@@ -16,7 +16,8 @@ class Zone:
 
 class PrinceOfParser:
     def __init__(self, instruction: str) -> None:
-        self.vertex: dict = {}
+        self.vertex: dict[str, Zone] = {}
+        self.links: dict[str, dict[str, int]] = {}
         self.instruction = instruction
         self.map_drone_lmt = 0
         self.start: Zone | None = None
@@ -55,6 +56,7 @@ class PrinceOfParser:
                 else:
                     self.end = z
                 self.vertex[node] = z
+                self.links[node] = {}
 
             elif hub == "hub":
                 datas, _, params = datas.partition("[")
@@ -78,6 +80,7 @@ class PrinceOfParser:
                         raise ValueError
                 z = Zone(node, (x, y), zone, color2, max_d)
                 self.vertex[node] = z
+                self.links[node] = {}
 
             elif hub == "connection":
                 datas, _, params = datas.partition("[")
@@ -97,10 +100,10 @@ class PrinceOfParser:
                     nb = int(snb)
                 if node not in self.vertex or nbor not in self.vertex:
                     raise KeyError
-                self.vertex[node]["voisin"][nbor] = nb
-                self.vertex[nbor]["voisin"][node] = nb
+                self.links[node][nbor] = nb
+                self.links[nbor][node] = nb
 
-        print(self.vertex.items())
+        print(self.links.items())
 
     @staticmethod
     def convertion(x: str, y: str) -> tuple[int, int]:
