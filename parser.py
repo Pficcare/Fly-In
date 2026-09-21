@@ -11,7 +11,7 @@ class Zone:
     coordo: tuple[int, int]
     zone_status: str = "normal"
     color: str | None = None
-    max_drones: int = 1
+    max_drones: int | None = 1
 
 
 class PrinceOfParser:
@@ -50,7 +50,7 @@ class PrinceOfParser:
                     color1 = p2
                 elif p1 != "max_drones":
                     raise ValueError
-                z = Zone(node, (x, y), "normal", color1)
+                z = Zone(node, (x, y), "normal", color1, max_drones=None)
                 if hub == "start_hub":
                     self.start = z
                 else:
@@ -124,6 +124,18 @@ class PrinceOfParser:
             raise ValueError
         else:
             return nb
+    
+    @staticmethod
+    def param_or_not_param(datas:str) -> dict[str,str]:
+        
+        param_values:dict[str,str] = {}
+
+        # A voir si je met en place ou pas, voir avec Professor
+        # Le code est tres similaire entre hub et start/end_hub
+
+
+        return param_values
+
 
 
 # class PrinceOfParser:
