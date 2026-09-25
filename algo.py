@@ -38,15 +38,24 @@ class PathFinder:
         start: str = self.graph.start.name
         end: str = self.graph.end.name
 
-        dist = self.infinity(start)
-        curr = start
+        distance: dict[str, float] = self.infinity(start)
+        curr: str | None = None
 
         while True:
-            for node in self.graph.connections[curr]:
- 
-
-
-
+            if curr == end:
+                break
+            curr = None
+            for node in distance:
+                if node in visited:
+                    continue
+                if curr is None:
+                    curr = node
+                elif distance[node] < distance[curr]:
+                    curr = node
+            if curr is None:
+                break
+            visited.add(curr)
+            print (visited)
 
     def infinity(self, start) -> dict[str, float]:
 
