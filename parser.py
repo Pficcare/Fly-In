@@ -17,17 +17,17 @@ HUB_KEYS = frozenset(["nb_drones", "start_hub", "end_hub", "hub", "connection"])
 
 @dataclass
 class Map:  # Regroupe les donnees pour dijka
-    vertex: dict[str, Zone]
-    links: dict[str, dict[str, int]]
+    nodes: dict[str, Zone]
+    connections: dict[str, dict[str, int]]
     map_drone_lmt: int
-    start: Zone | None
-    end: Zone | None
+    start: Zone
+    end: Zone
 
 
 class PrinceOfParser:
     def __init__(self, instruction: str) -> None:
-        self.vertex: dict[str, Zone] = {}
-        self.links: dict[str, dict[str, int]] = {}
+        self.nodes: dict[str, Zone] = {}
+        self.connections: dict[str, dict[str, int]] = {}
         self.instruction = instruction
         self.map_drone_lmt = 0
         self.start: Zone | None = None
@@ -65,8 +65,8 @@ class PrinceOfParser:
                     self.start = z
                 else:
                     self.end = z
-                self.vertex[node] = z
-                self.links[node] = {}
+                self.nodes[node] = z
+                self.connections[node] = {}
 
             elif hub == "hub":
                 datas, _, params = datas.partition("[")
@@ -89,8 +89,8 @@ class PrinceOfParser:
                     else:
                         raise ValueError
                 z = Zone(node, (x, y), zone, color2, max_d)
-                self.vertex[node] = z
-                self.links[node] = {}
+                self.nodes[node] = z
+                self.connections[node] = {}
 
             elif hub == "connection":
                 datas, _, params = datas.partition("[")
@@ -108,12 +108,15 @@ class PrinceOfParser:
                     link = link.strip()
                     snb = snb.strip("]")
                     nb = int(snb)
-                if node not in self.vertex or nbor not in self.vertex:
+                if node not in self.nodes or nbor not in self.nodes:
                     raise KeyError
-                self.links[node][nbor] = nb
-                self.links[nbor][node] = nb
+                self.connections[node][nbor] = nb
+                self.connections[nbor][node] = nb
 
-        return Map(self.vertex, self.links, self.map_drone_lmt, self.start, self.end)
+        if self.start is None or self.end is None:
+            raise ValueError
+
+        return Map(self.nodes, self.connections, self.map_drone_lmt, self.start, self.end)
 
     @staticmethod
     def convertion(x: str, y: str) -> tuple[int, int]:
