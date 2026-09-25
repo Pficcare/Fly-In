@@ -14,6 +14,15 @@ class Zone:
     max_drones: int | None = 1
 
 
+@dataclass
+class Map:  # Regroupe les donnees pour dijka
+    vertex: dict[str, Zone]
+    links: dict[str, dict[str, int]]
+    map_drone_lmt: int
+    start: Zone | None
+    end: Zone | None
+
+
 class PrinceOfParser:
     def __init__(self, instruction: str) -> None:
         self.vertex: dict[str, Zone] = {}
@@ -23,7 +32,7 @@ class PrinceOfParser:
         self.start: Zone | None = None
         self.end: Zone | None = None
 
-    def split_not_spit(self) -> None:
+    def split_not_spit(self) -> Map:
         for line in self.instruction.strip().splitlines():
             line, _, _ = line.partition("#")
 
@@ -103,7 +112,7 @@ class PrinceOfParser:
                 self.links[node][nbor] = nb
                 self.links[nbor][node] = nb
 
-        print(self.links.items())
+        return Map(self.vertex, self.links, self.map_drone_lmt, self.start, self.end)
 
     @staticmethod
     def convertion(x: str, y: str) -> tuple[int, int]:
@@ -124,18 +133,16 @@ class PrinceOfParser:
             raise ValueError
         else:
             return nb
-    
+
     @staticmethod
-    def param_or_not_param(datas:str) -> dict[str,str]:
-        
-        param_values:dict[str,str] = {}
+    def param_or_not_param(datas: str) -> dict[str, str]:
+
+        param_values: dict[str, str] = {}
 
         # A voir si je met en place ou pas, voir avec Professor
         # Le code est tres similaire entre hub et start/end_hub
 
-
         return param_values
-
 
 
 # class PrinceOfParser:
@@ -351,6 +358,7 @@ def main() -> None:
 
     p = PrinceOfParser(instruction)
     parsed = p.split_not_spit()
+    print (parsed)
 
 
 if __name__ == "__main__":
