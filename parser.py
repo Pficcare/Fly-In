@@ -1,17 +1,18 @@
 #!/usr/bin/python3
-# import sys
 from dataclasses import dataclass
+
+from zone import Zone
 
 HUB_KEYS = frozenset(["nb_drones", "start_hub", "end_hub", "hub", "connection"])
 
 
-@dataclass(frozen=True)
-class Zone:
-    name: str
-    coordo: tuple[int, int]
-    zone_status: str = "normal"
-    color: str | None = None
-    max_drones: int | None = 1
+# @dataclass(frozen=True)
+# class Zone:
+#     name: str
+#     coordo: tuple[int, int]
+#     zone_status: str = "normal"
+#     color: str | None = None
+#     max_drones: int | None = 1
 
 
 @dataclass
@@ -344,22 +345,3 @@ class PrinceOfParser:
 
 
 # Exemple:gate1 1 0[color=orange max_drones=1]
-
-
-def main() -> None:
-
-    try:
-        with open("./maps/easy/02_simple_fork.txt", "r", encoding="utf-8") as file:
-            instruction = file.read()
-
-    except (Exception, OSError) as e:
-        print(f"Error {e}")
-        raise e
-
-    p = PrinceOfParser(instruction)
-    parsed = p.split_not_spit()
-    print (parsed)
-
-
-if __name__ == "__main__":
-    main()
