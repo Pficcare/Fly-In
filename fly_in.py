@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from parser import PrinceOfParser
+from algo import PathFinder
 
 
 
@@ -13,12 +14,14 @@ def main() -> None:
 
     except (Exception, OSError) as e:
         print(f"Error {e}")
-        raise e
+        raise
 
     p = PrinceOfParser(instruction)
     data_parsed = p.split_not_spit()
     print (data_parsed)
-    # dijkarta_not_djakarta(data_parsed)
+    path = PathFinder(data_parsed)
+    solution = path.dijkstra_not_djikarta()
+    print (solution)
 
 
 if __name__ == "__main__":
