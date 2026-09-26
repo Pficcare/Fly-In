@@ -31,7 +31,7 @@ class PathFinder:
     def __init__(self, data_parsed: Map):
         self.graph = data_parsed
 
-    def dijkstra_not_djikarta(self) -> None:
+    def dijkstra_not_djikarta(self) -> list[str]:
 
         visited: set[str] = set()
         previous: dict[str, str] = {}
@@ -42,8 +42,6 @@ class PathFinder:
         curr: str | None = None
 
         while True:
-            if curr == end:
-                break
             curr = None
             for node in distance:
                 if node in visited:
@@ -52,12 +50,43 @@ class PathFinder:
                     curr = node
                 elif distance[node] < distance[curr]:
                     curr = node
+            if curr == end:
+                break
             if curr is None:
                 break
             visited.add(curr)
-            print (visited)
 
-    def infinity(self, start) -> dict[str, float]:
+            for next_node in self.graph.connections[curr]:
+                status = ZONE_INFO[self.graph.nodes[next_node].zone_status]
+                if not status.access:
+                    continue
+                if distance[curr] + status.cost < distance[next_node]:
+                    distance[next_node] = distance[curr] + status.cost
+                    previous[next_node] = curr
+            print(distance)
+        
+        return self.follow_this_path(previous, start, end)
+
+
+    @staticmethod
+    def follow_this_path(previous:dict[str,str],start:str, end:str) -> list[str]:
+        path:list[str] = [] 
+        
+        if end not in previous:
+            raise # to add
+
+        last_node = previous[end]
+        path.append(end)
+
+        while True:
+            path.append(last_node)
+            if last_node == start:
+                break
+            last_node = previous[last_node]
+        path.reverse()
+        return path
+
+    def infinity(self, start: str) -> dict[str, float]:
 
         dist: dict[str, float] = {}
 
