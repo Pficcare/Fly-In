@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from parser import PrinceOfParser
 from algo import PathFinder
-
+from drone import Engine
 
 
 def main() -> None:
@@ -17,11 +17,12 @@ def main() -> None:
         raise
 
     p = PrinceOfParser(instruction)
-    data_parsed = p.split_not_spit()
+    data_parsed = p.split_not_spit() # return Map
     print (data_parsed)
     path = PathFinder(data_parsed)
-    solution = path.dijkstra_not_djikarta()
+    solution:list[str] = path.dijkstra_not_djikarta() # return path solved
     print (solution)
+    brain = Engine(solution, data_parsed)
 
 
 if __name__ == "__main__":
