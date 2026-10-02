@@ -1,58 +1,112 @@
 from parser import Map
+from zone import ZONE_INFO, Zone
 
+# @dataclass
+# class Map:  # Regroupe les donnees pour dijka
+#     nodes: dict[str, Zone]
+#     connections: dict[str, dict[str, int]]
+#     map_drone_lmt: int
+#     start: Zone
+#     end: Zone
+
+# @dataclass(frozen=True)
+# class ZoneRestriction:
+#     cost: int
+#     access: bool
+#     priority: bool
+#
+#
+# @dataclass(frozen=True)
+# class Zone:
+#     name: str
+#     coordo: tuple[int, int]
+#     zone_status: str = "normal"
+#     color: str | None = None
+#     max_drones: int | None = 1
+#
+#
+# ZONE_INFO: dict[str, ZoneRestriction] = {
+#     "normal": ZoneRestriction(1, True, False),
+#     "priority": ZoneRestriction(1, True, True),
+#     "restricted": ZoneRestriction(2, True, False),
+#     "blocked": ZoneRestriction(1, False, False),
 
 
 # Creation de la class Drone et de sa logic
 
-DIC_VOISIN = {}
-PATH = []
-DIC_ZONE = {}
-ZONE: bool = True
 
 class Drone:
-    def __init__(self, drone_id:int, position:str):
+    def __init__(self, drone_id: int, drone_path: list[Zone]) -> None:
         self._drone_id: int = drone_id
-        self.position = position
-        self.flyin:bool = False
+        self.drone_path = drone_path
+        self.flyin: bool = False
+        self.move_cost: int = self.path_cost()
+        self.index: int = 0
 
-       
     @property
     def drone_id(self) -> int:
         return self._drone_id
 
-    def can_i_move(self):
-        if ZONE is True:
-            self.update_position()
-
-    def update_position(self):
-        self.position = DIC_VOISIN[self.position]
+    def update_position(self) -> None:
+        if self.index < len(self.drone_path) - 1:
+            self.index += 1
+            self.move_cost -= ZONE_INFO[self.drone_path[self.index].zone_status].cost
+        else:
+            raise ValueError
 
     def return_position(self) -> str:
-        return self.position
-    
-    def switch_mode(self):
+        return self.drone_path[self.index].name
+
+    def path_cost(self) -> int:
+        cost: int = 0
+
+        for i in range(1, len(self.drone_path)):
+            cost += ZONE_INFO[self.drone_path[i].zone_status].cost
+        return cost
+
+    def switch_mode(self) -> None:
         if not self.flyin:
             self.flyin = True
 
+    def reach_the_end(self) -> bool:
+        return self.index == len(self.drone_path) - 1
+
+
+class ZoneState: ...
+
+
+class LinkZone: ...
+
 
 class Engine:
-    def __init__(self, path:list[str], map_info: Map):
+    def __init__(self, path: list[str], map_info: Map) -> None:
         self.path = path
-        self.start:set = set()
-        self.end:set = set()
+        self.start: set = set()
+        self.end: set = set()
         self.map_info = map_info
         self.drone_list: list[Drone] = self.gen_drones()
 
     def gen_drones(self) -> list[Drone]:
         drone_list: list[Drone] = []
-        position:str = self.path[0]
+        drone_path: list[Zone] = self.gen_path()
 
         for i in range(1, self.map_info.map_drone_lmt + 1):
-            drone_list.append(Drone(i, position))
+            drone_list.append(Drone(i, drone_path))
         return drone_list
 
+    def gen_path(self) -> list[Zone]:
+        path_list: list[Zone] = []
+
+        for el in self.path:
+            path_list.append(self.map_info.nodes[el])
+        return path_list
+
+    def engine(self) -> None: 
+        ...
+
+    def check_zone_lmt(self) -> int | None: 
+        ...
 
 
-    def engine(self):
-       ... 
+
 
