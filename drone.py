@@ -72,7 +72,20 @@ class Drone:
         return self.index == len(self.drone_path) - 1
 
 
-class ZoneState: ...
+class ZoneState:
+    def __init__(self, curr_zone: Zone) -> None:
+        self.capacity = curr_zone.max_drones
+
+    def free_spot(self) -> bool:
+        return True if self.capacity is None or self.capacity > 0 else False
+
+    def add_slot(self) -> None:
+        if self.capacity is not None:
+            self.capacity += 1
+
+    def del_slot(self) -> None:
+        if self.capacity is not None:
+            self.capacity -= 1
 
 
 class LinkZone: ...
@@ -88,7 +101,9 @@ class Engine:
 
     def gen_drones(self) -> list[Drone]:
         drone_list: list[Drone] = []
-        drone_path: list[Zone] = self.gen_path()
+        drone_path: list[Zone] = (
+            self.gen_path()
+        )  # Give the path and data from each Zone to each drones
 
         for i in range(1, self.map_info.map_drone_lmt + 1):
             drone_list.append(Drone(i, drone_path))
@@ -101,12 +116,6 @@ class Engine:
             path_list.append(self.map_info.nodes[el])
         return path_list
 
-    def engine(self) -> None: 
-        ...
+    def engine(self) -> None: ...
 
-    def check_zone_lmt(self) -> int | None: 
-        ...
-
-
-
-
+    def check_zone_lmt(self) -> int | None: ...
