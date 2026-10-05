@@ -67,6 +67,8 @@ class Drone:
     def switch_mode(self) -> None:
         if not self.flyin:
             self.flyin = True
+        else:
+            self.flyin = False
 
     def reach_the_end(self) -> bool:
         return self.index == len(self.drone_path) - 1
@@ -109,6 +111,7 @@ class Engine:
         self.end: set = set()
         self.map_info = map_info
         self.drone_list: list[Drone] = self.gen_drones()
+        self.zone_state: dict[str, ZoneState] = self.gen_zone_state()
         self.links: dict[frozenset[str], LinkZone] = self.gen_links()
 
     def gen_drones(self) -> list[Drone]:
@@ -137,6 +140,13 @@ class Engine:
                 if key not in links:
                     links[key] = LinkZone(link_capacity)
         return links
+
+    def gen_zone_state(self) -> dict[str, ZoneState]:
+        state: dict[str, ZoneState] = {}
+
+        for key, el in self.map_info.nodes.items():
+            state[key] = ZoneState(el)
+        return state
 
     def engine(self) -> None: ...
 
