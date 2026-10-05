@@ -88,7 +88,18 @@ class ZoneState:
             self.capacity -= 1
 
 
-class LinkZone: ...
+class LinkZone:
+    def __init__(self, link_capacity: int) -> None:
+        self.capacity = link_capacity
+
+    def free_spot(self) -> bool:
+        return self.capacity > 0
+
+    def add_slot(self) -> None:
+        self.capacity += 1
+
+    def del_slot(self) -> None:
+        self.capacity -= 1
 
 
 class Engine:
@@ -98,6 +109,7 @@ class Engine:
         self.end: set = set()
         self.map_info = map_info
         self.drone_list: list[Drone] = self.gen_drones()
+        self.links: dict[frozenset[str], LinkZone] = self.gen_links()
 
     def gen_drones(self) -> list[Drone]:
         drone_list: list[Drone] = []
@@ -115,6 +127,16 @@ class Engine:
         for el in self.path:
             path_list.append(self.map_info.nodes[el])
         return path_list
+
+    def gen_links(self) -> dict[frozenset[str], LinkZone]:
+        links: dict[frozenset[str], LinkZone] = {}
+
+        for node, nbors in self.map_info.connections.items():
+            for nbor, link_capacity in nbors.items():
+                key = frozenset({node, nbor})
+                if key not in links:
+                    links[key] = LinkZone(link_capacity)
+        return links
 
     def engine(self) -> None: ...
 
