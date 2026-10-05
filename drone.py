@@ -73,6 +73,9 @@ class Drone:
     def reach_the_end(self) -> bool:
         return self.index == len(self.drone_path) - 1
 
+    def key_tuple(self) -> tuple[bool, int, int]:
+        return (not self.flyin, self.move_cost, self._drone_id)
+
 
 class ZoneState:
     def __init__(self, curr_zone: Zone) -> None:
@@ -107,12 +110,11 @@ class LinkZone:
 class Engine:
     def __init__(self, path: list[str], map_info: Map) -> None:
         self.path = path
-        self.start: set = set()
-        self.end: set = set()
         self.map_info = map_info
         self.drone_list: list[Drone] = self.gen_drones()
         self.zone_state: dict[str, ZoneState] = self.gen_zone_state()
         self.links: dict[frozenset[str], LinkZone] = self.gen_links()
+        self.backup: list[list[str]] = []
 
     def gen_drones(self) -> list[Drone]:
         drone_list: list[Drone] = []
@@ -148,6 +150,22 @@ class Engine:
             state[key] = ZoneState(el)
         return state
 
-    def engine(self) -> None: ...
+    def not_all_arrived(self) -> bool:
 
-    def check_zone_lmt(self) -> int | None: ...
+        for el in self.drone_list:
+            if not el.reach_the_end():
+                return True
+        return False
+
+    def engine_v12_biturbo(self) -> None:
+
+        while self.not_all_arrived():
+            ...
+
+
+
+
+
+
+
+
