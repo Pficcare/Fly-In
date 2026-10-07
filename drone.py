@@ -160,12 +160,45 @@ class Engine:
     def engine_v12_biturbo(self) -> None:
 
         while self.not_all_arrived():
-            ...
+            moves: list[str] = []
+            links_used: list[frozenset] = []
+            drones_sorted = sorted(self.drone_list, key=Drone.key_tuple)
 
+            for drone in drones_sorted:
+                if drone.reach_the_end():
+                    continue
+                if drone.flyin:
+                    drone.switch_mode()
+                    link_to_free = frozenset(
+                        {
+                            drone.return_position(),
+                            drone.drone_path[drone.index + 1].name,
+                        }
+                    )
+                    self.links[link_to_free].add_slot()
+                    drone.update_position()
+                    moves.append(f"D{drone.drone_id}-{drone.return_position()}")
+                else:
+                    curr_zone = drone.return_position()
+                    next_zone = drone.drone_path[drone.index + 1].name
+                    link = self.links[frozenset({curr_zone, next_zone})]
+                    if link.free_spot() and self.zone_state[next_zone].free_spot():
+                        if (
+                            drone.drone_path[drone.index + 1].zone_status
+                            == "restricted"
+                        ):
+                            drone.switch_mode()
+                            continue
+                        else:
+                            self.zone_state[curr_zone].add_slot()
+                            self.zone_state[next_zone].del_slot()
+                            link.del_slot()
+                            drone.update_position()
+                            links_used.append(frozenset({curr_zone, next_zone}))
+                            moves.append(f"D{drone.drone_id}-{drone.return_position()}")
+                    else:
+                        continue
+            for el in links_used:
+                self.links[el].add_slot()
 
-
-
-
-
-
-
+            self.backup.append(moves)
