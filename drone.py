@@ -209,3 +209,9 @@ class Engine:
 
             self.backup.append(moves)
 
+    def print_backup(self) -> None:
+        for el in self.backup:
+            line = " ".join(el)
+            print(line)
+            
+
