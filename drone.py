@@ -188,7 +188,10 @@ class Engine:
                             == "restricted"
                         ):
                             drone.switch_mode()
-                            continue
+                            self.zone_state[curr_zone].add_slot()
+                            self.zone_state[next_zone].del_slot()
+                            link.del_slot()
+                            moves.append(f"D{drone.drone_id}-{curr_zone}-{next_zone}")
                         else:
                             self.zone_state[curr_zone].add_slot()
                             self.zone_state[next_zone].del_slot()
@@ -201,4 +204,8 @@ class Engine:
             for el in links_used:
                 self.links[el].add_slot()
 
+            if not moves:
+                raise ValueError  # to change by custome error
+
             self.backup.append(moves)
+
