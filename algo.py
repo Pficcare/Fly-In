@@ -1,5 +1,4 @@
 from parser import Map
-
 from zone import ZONE_INFO
 
 # class Zone:
@@ -38,6 +37,7 @@ class PathFinder:
         previous: dict[str, str] = {}
         start: str = self.graph.start.name
         end: str = self.graph.end.name
+        k = len(self.graph.nodes)
 
         distance: dict[str, float] = self.infinity(start)
         curr: str | None = None
@@ -59,22 +59,21 @@ class PathFinder:
 
             for next_node in self.graph.connections[curr]:
                 status = ZONE_INFO[self.graph.nodes[next_node].zone_status]
+                cost = (status.cost * k) - 1 if status.priority else status.cost * k
                 if not status.access:
                     continue
-                if distance[curr] + status.cost < distance[next_node]:
-                    distance[next_node] = distance[curr] + status.cost
+                if distance[curr] + cost < distance[next_node]:
+                    distance[next_node] = distance[curr] + cost
                     previous[next_node] = curr
-            print(distance)
-        
+
         return self.follow_this_path(previous, start, end)
 
-
     @staticmethod
-    def follow_this_path(previous:dict[str,str],start:str, end:str) -> list[str]:
-        path:list[str] = [] 
-        
+    def follow_this_path(previous: dict[str, str], start: str, end: str) -> list[str]:
+        path: list[str] = []
+
         if end not in previous:
-            raise # to add
+            raise  # to add
 
         last_node = previous[end]
         path.append(end)
