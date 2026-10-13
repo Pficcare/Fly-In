@@ -58,9 +58,37 @@ drones currently follow this single shortest path.
 
 On the provided maps, this already meets every reference target of the subject
 (e.g. simple fork: 6 turns for a target of 8, circular loop: 15 for 15).
-Planned improvements: preferring `priority` zones on equal cost, then a
-**min-cost max-flow** (successive shortest paths, with Dijkstra as the inner
+On equal number of turns, it prefers the path with the most `priority` zones
+(see below). Planned improvement: a **min-cost max-flow** (successive shortest paths, with Dijkstra as the inner
 search) to spread drones over several paths on maps with parallel corridors.
+
+### Priority zones (ambiguity in the subject)
+
+The subject only says that a `priority` zone *"costs 1 turn but should be
+prioritized in pathfinding"*. It does not say how strong that preference is.
+Interpretation chosen here:
+
+- `priority` is a **tie-break only**: between paths with the same number of
+  turns, the one with the most `priority` zones wins.
+- A longer path is **never** chosen just to cross `priority` zones: the score is
+  the number of turns, so that would only lose turns.
+
+Implementation: the preference is put into the costs instead of adding a
+special rule to Dijkstra. With `K` = number of zones of the map:
+
+| Zone type | Turns | Cost in Dijkstra |
+|---|---|---|
+| `normal` | 1 | `K` |
+| `priority` | 1 | `K - 1` |
+| `restricted` | 2 | `2K` |
+
+A path enters at most `K - 1` zones, so all the `- 1` bonuses together are
+always worth less than one turn (`K`): a longer path can never win. The search
+stays generic, and the same costs will feed the min-cost max-flow.
+
+Check: on a variant of `priority_puzzle` where both paths take 4 turns, the
+path through the two `priority` zones is chosen; on the 10 provided maps, scores
+and paths are unchanged.
 
 ### Simulation engine
 
