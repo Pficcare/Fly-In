@@ -53,3 +53,17 @@ class Clock:
                 turn += 1
         return steps
 
+    def valid_step(self, steps: list[Step]) -> bool:
+        for step in steps:
+            if step.zone is not None:
+                limit = self.map_info.nodes[step.zone].max_drones
+                booked = self.zone_booked.get((step.zone, step.turn), 0)
+                if limit is not None and booked >= limit:
+                    return False
+            if step.link is not None:
+                limit = self.link_capacity[step.link]
+                booked = self.link_booked.get((step.link, step.turn), 0)
+                if booked >= limit:
+                    return False
+        return True
+
