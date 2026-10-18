@@ -34,3 +34,22 @@ class Clock:
             link_capacity[key] = capacity
         return link_capacity
 
+    def itinerary(self, start_turn: int) -> list[Step]:
+        steps: list[Step] = []
+        turn = start_turn
+
+        for i in range(len(self.path) - 1):
+            curr_zone = self.path[i]
+            next_zone = self.path[i + 1]
+            link = frozenset({curr_zone, next_zone})
+            if self.map_info.nodes[next_zone].zone_status == "restricted":
+                steps.append(
+                    Step(turn + 1, None, link, f"{curr_zone}-{next_zone}")
+                )
+                steps.append(Step(turn + 2, next_zone, None, next_zone))
+                turn += 2
+            else:
+                steps.append(Step(turn + 1, next_zone, link, next_zone))
+                turn += 1
+        return steps
+
