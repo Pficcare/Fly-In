@@ -34,9 +34,12 @@ class LinkZone:
 
 
 class Engine:
-    def __init__(self, path: list[str], map_info: Map) -> None:
+    def __init__(
+        self, path: list[str], map_info: Map, depart: dict[int, int]
+    ) -> None:
         self.path = path
         self.map_info = map_info
+        self.depart = depart
         self.drone_list: list[Drone] = self.gen_drones()
         self.zone_state: dict[str, ZoneState] = self.gen_zone_state()
         self.links: dict[frozenset[str], LinkZone] = self.gen_links()
@@ -49,7 +52,7 @@ class Engine:
         )  # Give the path and data from each Zone to each drones
 
         for i in range(1, self.map_info.map_drone_lmt + 1):
-            drone_list.append(Drone(i, drone_path))
+            drone_list.append(Drone(i, drone_path, self.depart[i]))
         return drone_list
 
     def gen_path(self) -> list[Zone]:
@@ -86,6 +89,7 @@ class Engine:
     def engine_v12_biturbo(self) -> None:
 
         while self.not_all_arrived():
+            turn = len(self.backup) + 1
             moves: list[str] = []
             links_used: list[frozenset] = []
             drones_sorted = sorted(self.drone_list, key=Drone.key_tuple)
@@ -93,12 +97,18 @@ class Engine:
             for drone in drones_sorted:
                 if drone.reach_the_end():
                     continue
+                if drone.index == 0 and turn < drone.start_turn:
+                    continue
                 if drone.flyin:
+                    next_zone = drone.drone_path[drone.index + 1].name
+                    if not self.zone_state[next_zone].free_spot():
+                        raise ValueError  # to change by custome error
+                    self.zone_state[next_zone].del_slot()
                     drone.switch_mode()
                     link_to_free = frozenset(
                         {
                             drone.return_position(),
-                            drone.drone_path[drone.index + 1].name,
+                            next_zone,
                         }
                     )
                     self.links[link_to_free].add_slot()
@@ -108,25 +118,22 @@ class Engine:
                     curr_zone = drone.return_position()
                     next_zone = drone.drone_path[drone.index + 1].name
                     link = self.links[frozenset({curr_zone, next_zone})]
-                    if link.free_spot() and self.zone_state[next_zone].free_spot():
-                        if (
-                            drone.drone_path[drone.index + 1].zone_status
-                            == "restricted"
-                        ):
+                    if (
+                        drone.drone_path[drone.index + 1].zone_status
+                        == "restricted"
+                    ):
+                        if link.free_spot():
                             drone.switch_mode()
                             self.zone_state[curr_zone].add_slot()
-                            self.zone_state[next_zone].del_slot()
                             link.del_slot()
                             moves.append(f"D{drone.drone_id}-{curr_zone}-{next_zone}")
-                        else:
-                            self.zone_state[curr_zone].add_slot()
-                            self.zone_state[next_zone].del_slot()
-                            link.del_slot()
-                            drone.update_position()
-                            links_used.append(frozenset({curr_zone, next_zone}))
-                            moves.append(f"D{drone.drone_id}-{drone.return_position()}")
-                    else:
-                        continue
+                    elif link.free_spot() and self.zone_state[next_zone].free_spot():
+                        self.zone_state[curr_zone].add_slot()
+                        self.zone_state[next_zone].del_slot()
+                        link.del_slot()
+                        drone.update_position()
+                        links_used.append(frozenset({curr_zone, next_zone}))
+                        moves.append(f"D{drone.drone_id}-{drone.return_position()}")
             for el in links_used:
                 self.links[el].add_slot()
 
