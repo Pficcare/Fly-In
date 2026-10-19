@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from parser import Map
 
+from parser import Map
 
 
 @dataclass(frozen=True)
@@ -11,16 +11,13 @@ class Step:
     move: str
 
 
-
 class Clock:
-    def __init__(self, path:list[str], map_info: Map) -> None:
+    def __init__(self, path: list[str], map_info: Map) -> None:
         self.path = path
         self.map_info = map_info
-        self.link_capacity: dict[frozenset[str], int] = (
-            self.gen_link_capacity()
-        )
+        self.link_capacity: dict[frozenset[str], int] = self.gen_link_capacity()
         self.zone_booked: dict[tuple[str, int], int] = {}
-        self.link_booked:  dict[tuple[frozenset[str], int], int] = {}
+        self.link_booked: dict[tuple[frozenset[str], int], int] = {}
         self.result: list[list[str]] = []
 
     def gen_link_capacity(self) -> dict[frozenset[str], int]:
@@ -43,9 +40,7 @@ class Clock:
             next_zone = self.path[i + 1]
             link = frozenset({curr_zone, next_zone})
             if self.map_info.nodes[next_zone].zone_status == "restricted":
-                steps.append(
-                    Step(turn + 1, None, link, f"{curr_zone}-{next_zone}")
-                )
+                steps.append(Step(turn + 1, None, link, f"{curr_zone}-{next_zone}"))
                 steps.append(Step(turn + 2, next_zone, None, next_zone))
                 turn += 2
             else:
@@ -81,3 +76,13 @@ class Clock:
                 self.result.append([])
             self.result[step.turn - 1].append(f"D{drone_id}-{step.move}")
 
+    def from_time_to_space(self) -> None:
+        start: int = 0
+
+        for d_id in range(1, self.map_info.map_drone_lmt + 1):
+            while True:
+                steps = self.itinerary(start)
+                if self.valid_step(steps):
+                    self.book(steps, d_id)
+                    break
+                start += 1
