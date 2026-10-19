@@ -19,6 +19,7 @@ class Clock:
         self.zone_booked: dict[tuple[str, int], int] = {}
         self.link_booked: dict[tuple[frozenset[str], int], int] = {}
         self.result: list[list[str]] = []
+        self.start_turn: dict[int, int] = {}
 
     def gen_link_capacity(self) -> dict[frozenset[str], int]:
         link_capacity: dict[frozenset[str], int] = {}
@@ -83,6 +84,7 @@ class Clock:
             while True:
                 steps = self.itinerary(start)
                 if self.valid_step(steps):
+                    self.start_turn[d_id] = start + 1
                     self.book(steps, d_id)
                     break
                 start += 1
