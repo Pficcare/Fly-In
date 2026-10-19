@@ -113,21 +113,34 @@ and paths are unchanged.
 
 ### Simulation engine
 
-- **The Engine is the only decision-maker.** Drones and counters only hold
-  information; the Engine reads them, decides, then updates them.
+- **`Clock` decides when, the Engine simulates.** `Clock` (see *Scheduling:
+  reservation table*) gives each drone its departure turn, stored in the drone
+  (`start_turn`); a drone stays in `start` until that turn. After that, the
+  Engine runs every turn: drones and counters only hold information, the Engine
+  reads them, checks the capacities, then updates them.
 - **One path per drone**, stored in the drone itself, so a multi-path router can
   be plugged in later without changing the Engine.
 - **Capacity counters:** `ZoneState` and `LinkZone` count the *remaining* places.
   Each connection has **one** counter whatever the direction (dictionary keyed by
   a `frozenset` of the two zone names), otherwise its capacity would be doubled.
 - **Turn order replaces a two-phase evaluation:** each turn, drones are sorted
-  (in flight first, then closest to the end, then by id). Drones in front move
+  (closest to the end first, then in flight, then by id). Drones in front move
   first, so a place they free is usable by the drones behind them **in the same
-  turn**, as the subject requires.
+  turn**, as the subject requires. On a tie, the drone in flight goes first: it
+  lands and frees the connection, so a drone waiting in its starting zone can
+  take that connection in the same turn. The first engine sorted drones in
+  flight first; with landing on a `restricted` zone (see below), a drone in
+  flight was then checked before the drone in front had left the zone, and the
+  landing failed (challenger, turn 9).
 - **Connections are freed at the end of the turn**; zones are freed immediately.
-- **Restricted zones:** at take-off the drone frees its zone and reserves both the
-  connection and the destination zone; it must land on the next turn, which frees
-  the connection. While in flight it is printed as `D<id>-<zone1>-<zone2>`.
+- **Restricted zones:** at take-off the drone frees its zone and takes **only the
+  connection**. It must land on the next turn: landing takes the destination
+  zone and frees the connection. The zone is taken at landing, not at take-off,
+  because the departure turns from `Clock` guarantee it will be free then; this
+  is what lets one drone through every turn instead of every 2 turns. If the zone
+  is still full at landing, the Engine raises an error, since a drone cannot wait
+  on a connection: it is a guard in case `Clock` and the Engine ever disagree.
+  While in flight the drone is printed as `D<id>-<zone1>-<zone2>`.
 - **Deadlock guard:** every state change writes a move, so a turn with no move
   while drones remain means the simulation is stuck; the Engine stops instead of
   looping forever.
@@ -175,9 +188,35 @@ Why this choice:
   parameter is the start turn. It does not need to restart from 0 for the next
   drone: every earlier start turn already failed because of reservations that
   are still there.
-- **It reaches the lower bound.** A prototype of this planner reached
-  `L + n - 1` on the provided maps, e.g. challenger 43 turns (67 with the first
-  engine) and circular loop 10 (15 before).
+- **It reaches the lower bound.** `Clock` reaches `L + n - 1` on the provided
+  maps where one path is optimal, e.g. challenger 43 turns (67 with the first
+  engine) and circular loop 10 (15 before). See *Results*.
+
+### Results
+
+Measured with `python3 fly_in.py <map>` on the 10 provided maps. Every output
+was also replayed by an independent checker (zone and connection capacities,
+moves along the path, landing on the turn after a take-off, all drones
+delivered): all 10 are valid.
+
+| Map | Drones | First engine | Reservation table | Subject target |
+|---|---|---|---|---|
+| easy/01_linear_path | 2 | 4 | 4 | < 10 |
+| easy/02_simple_fork | 4 | 6 | 6 | < 10 |
+| easy/03_basic_capacity | 4 | 4 | 4 | < 10 |
+| medium/01_dead_end_trap | 5 | 8 | 8 | 10–30 |
+| medium/02_circular_loop | 6 | 15 | **10** | 10–30 |
+| medium/03_priority_puzzle | 5 | 8 | 8 | 10–30 |
+| hard/01_maze_nightmare | 8 | 13 | 13 | < 60 |
+| hard/02_capacity_hell | 12 | 16 | 16 | < 60 |
+| hard/03_ultimate_challenge | 15 | 26 | 26 | < 60 |
+| challenger/01_the_impossible_dream | 25 | 67 | **43** | 45 (record) |
+
+Only 2 maps change: circular loop and challenger are the only ones where the
+chosen path crosses a `restricted` zone, which the first engine let through one
+drone every 2 turns. Four other maps contain `restricted` zones, but Dijkstra's
+path avoids them, so nothing changes there. On the challenger map, 43 is
+also the lower bound `19 + 25 - 1`: no routing can do better.
 
 ## Visual representation
 
@@ -218,10 +257,10 @@ connection: path_b-goal
 Output (6 turns):
 
 ```
-D1-junction D2-junction
-D1-path_a D3-junction
-D1-goal D2-path_a D4-junction
-D2-goal D3-path_a
+D1-junction
+D1-path_a D2-junction
+D1-goal D2-path_a D3-junction
+D2-goal D3-path_a D4-junction
 D3-goal D4-path_a
 D4-goal
 ```
