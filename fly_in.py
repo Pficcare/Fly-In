@@ -2,6 +2,7 @@
 from parser import PrinceOfParser
 from algo import PathFinder
 from engine import Engine
+from booking import Clock
 import sys
 
 
@@ -27,7 +28,9 @@ def main() -> None:
         path = PathFinder(data_parsed)
         solution:list[str] = path.dijkstra_not_djikarta() # return path solved
         print (solution)
-        brain = Engine(solution, data_parsed)
+        clock = Clock(solution, data_parsed)
+        clock.from_time_to_space()
+        brain = Engine(solution, data_parsed, clock.start_turn)
         brain.engine_v12_biturbo()
         brain.print_backup()
 
