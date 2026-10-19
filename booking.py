@@ -67,3 +67,17 @@ class Clock:
                     return False
         return True
 
+    def book(self, steps: list[Step], drone_id: int) -> None:
+        for step in steps:
+            if step.zone is not None:
+                zone_key = (step.zone, step.turn)
+                booked = self.zone_booked.get(zone_key, 0)
+                self.zone_booked[zone_key] = booked + 1
+            if step.link is not None:
+                link_key = (step.link, step.turn)
+                booked = self.link_booked.get(link_key, 0)
+                self.link_booked[link_key] = booked + 1
+            while len(self.result) < step.turn:
+                self.result.append([])
+            self.result[step.turn - 1].append(f"D{drone_id}-{step.move}")
+
