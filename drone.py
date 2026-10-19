@@ -5,12 +5,13 @@ from zone import ZONE_INFO, Zone
 
 
 class Drone:
-    def __init__(self, drone_id: int, drone_path: list[Zone]) -> None:
+    def __init__(self, drone_id: int, drone_path: list[Zone], start_turn: int) -> None:
         self._drone_id: int = drone_id
         self.drone_path = drone_path
         self.flyin: bool = False
         self.move_cost: int = self.path_cost()
         self.index: int = 0
+        self.start_turn = start_turn
 
     @property
     def drone_id(self) -> int:
@@ -42,5 +43,5 @@ class Drone:
     def reach_the_end(self) -> bool:
         return self.index == len(self.drone_path) - 1
 
-    def key_tuple(self) -> tuple[bool, int, int]:
-        return (not self.flyin, self.move_cost, self._drone_id)
+    def key_tuple(self) -> tuple[int, bool, int]:
+        return (self.move_cost, not self.flyin, self._drone_id)
