@@ -41,6 +41,7 @@ its own:
 | `algo.py` | `PathFinder`: path search |
 | `drone.py` | `Drone`: carries its own data (id, path, position, in-flight state) |
 | `engine.py` | `Engine`: runs the turns; `ZoneState` / `LinkZone`: capacity counters |
+| `booking.py` | `Clock`: reservation table, plans the timed itinerary of every drone |
 | `fly_in.py` | entry point: reads the argument, chains the steps, prints the result |
 
 ### Zone model
@@ -54,13 +55,33 @@ which keeps the rules in one place and readable.
 
 `PathFinder` runs a hand-written **Dijkstra** (no graph library) weighted by the
 cost of the destination zone (`restricted` = 2), skipping `blocked` zones. All
-drones currently follow this single shortest path.
+drones follow this single shortest path. On equal number of turns, it prefers
+the path with the most `priority` zones (see below).
 
-On the provided maps, this already meets every reference target of the subject
-(e.g. simple fork: 6 turns for a target of 8, circular loop: 15 for 15).
-On equal number of turns, it prefers the path with the most `priority` zones
-(see below). Planned improvement: a **min-cost max-flow** (successive shortest paths, with Dijkstra as the inner
-search) to spread drones over several paths on maps with parallel corridors.
+### Why Dijkstra was not replaced by a multi-path router
+
+The first plan was a **min-cost max-flow** (successive shortest paths, with
+Dijkstra as the inner search) to spread drones over several paths. Before
+writing it, the possible gain was measured on the 10 provided maps:
+
+- **7 maps out of 10 have a max flow of 1**: every drone must cross the same
+  connection or zone of capacity 1 (e.g. `maze_c2-bottleneck`, `start-gate_hell1`).
+  There, no router can do better than a single path.
+- On those maps the score is bounded below by `L + n - 1` (`L` = turns of the
+  shortest path, `n` = number of drones). On the challenger map:
+  `19 + 25 - 1 = 43`, whatever the routing.
+- **Reverse arcs** (the part of the flow that can undo a previous choice) gain
+  **0 turns** on all 10 maps.
+- Several paths only help **2 maps**: simple fork (6 → 4) and priority puzzle
+  (8 → 6), which already meet the subject's targets with one path.
+- A simpler variant (rerun Dijkstra after removing the used capacity) gave the
+  same results, but needed a copy of every capacity: too much complexity for
+  these 2 maps.
+
+The measures showed that the turns were lost **in the simulation, not in the
+routing**: on `restricted` zones, the first engine only let one drone through
+every 2 turns (challenger: 67 turns instead of 43). So Dijkstra stays as it is,
+and the effort went into the scheduling (see *Scheduling: reservation table*).
 
 ### Priority zones (ambiguity in the subject)
 
@@ -112,6 +133,51 @@ and paths are unchanged.
   looping forever.
 - **History:** each turn is stored as a list of moves; the score is the number of
   turns.
+
+### Scheduling: reservation table
+
+**The problem with the first engine.** A drone flying to a `restricted` zone
+spends one turn on the connection and **cannot wait there**: it must land on the
+next turn. When it takes off, the Engine does not know if the zone will be free
+on the next turn, so it reserves the zone at take-off to be safe. The result is
+one drone every 2 turns on a `restricted` zone: `L + 2(n - 1)` turns instead of
+`L + n - 1` (challenger: 67 instead of 43).
+
+**The idea:** instead of deciding turn by turn, compute the **full timed
+itinerary of every drone before the simulation**. A take-off toward a
+`restricted` zone is then only planned if the landing turn is known to be free.
+
+How it works (`booking.py`, class `Clock`):
+
+1. `itinerary(start_turn)` builds the list of steps of a drone leaving `start`
+   at a given turn: each step says on which turn it uses which zone and which
+   connection. A `restricted` zone gives two steps (the turn on the connection,
+   then the landing).
+2. Two tables count the reservations: **zone × turn** and **connection × turn**.
+3. `valid_step` checks that no step of the itinerary exceeds a capacity.
+4. Drones are planned one after the other. For each drone, the start turn is
+   increased until the itinerary is valid, then `book` stores it.
+
+Rules used in the tables:
+
+- A zone is counted **at the end of the turn** where a drone arrives.
+- A `restricted` zone is only needed **at landing**, not at take-off.
+- A connection is counted on the turn the drone takes it.
+
+Why this choice:
+
+- **No deadlock possible.** A drone only waits in `start`, which has unlimited
+  capacity; once in the air, its plan never changes. A drone can never be
+  stuck behind another one.
+- **A plan is never questioned.** A reservation is only made when the whole
+  itinerary is valid, so later drones adapt to earlier ones, never the reverse.
+- **The search is short.** All drones share the same path, so the only free
+  parameter is the start turn. It does not need to restart from 0 for the next
+  drone: every earlier start turn already failed because of reservations that
+  are still there.
+- **It reaches the lower bound.** A prototype of this planner reached
+  `L + n - 1` on the provided maps, e.g. challenger 43 turns (67 with the first
+  engine) and circular loop 10 (15 before).
 
 ## Visual representation
 
