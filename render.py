@@ -1,5 +1,6 @@
 from parser import Map
 from timeline import Timeline
+import pygame
 
 # class Zone:
 #     name: str
@@ -26,8 +27,8 @@ class Render:
         self.width: int = width
         self.height: int = height
         self.border: int = 30
-        self.mid_x: int = self.width // 2  # A utiliser si x = 0
-        self.mid_y: int = self.height // 2  # A utiliser si y = 0
+        self.mid_x: int = self.width // 2  # A utiliser si scalex = 0
+        self.mid_y: int = self.height // 2  # A utiliser si scaley = 0
         self.min_x: int
         self.max_x: int
         self.min_y: int
@@ -37,6 +38,11 @@ class Render:
         self.mesures()
         self.pixel_dic:dict[str, tuple[int, int]] = {}
         self.pixart()
+        self.clock = pygame.time.Clock()
+        self.window = pygame.display.set_mode((self.width, self.height))
+        self.turn: int = 0
+        self.pause: bool = False
+        self.turn_time:int = 0
 
 
     def mesures(self) -> None:
@@ -63,11 +69,6 @@ class Render:
 
     def pixart(self) -> None:
 
-        pos: int = 0
-
-        lx: list[int] = []
-        ly: list[int] = []
-
         for el in self.map.nodes.values():
             x, y = el.coordo
             px = (
@@ -82,3 +83,32 @@ class Render:
             )
 
             self.pixel_dic[el.name] = (px, py)
+
+    def run_run(self) -> None:
+        
+        pygame.init()
+        pygame.display.set_caption("Fly-In")
+
+        
+        while True:
+            self.clock.tick(60)
+
+            for el in pygame.event.get():
+                if el.type == pygame.QUIT:
+                    break
+            self.window.fill((40,40,40))
+            pygame.display.flip()
+        
+
+
+        pygame.quit()
+
+
+
+
+
+
+
+
+
+
