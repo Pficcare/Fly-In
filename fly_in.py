@@ -3,6 +3,7 @@ from parser import PrinceOfParser
 from algo import PathFinder
 from engine import Engine
 from booking import Clock
+from timeline import Timeline
 import sys
 
 
@@ -33,6 +34,7 @@ def main() -> None:
         brain = Engine(solution, data_parsed, clock.start_turn)
         brain.engine_v12_biturbo()
         brain.print_backup()
+        timeline = Timeline(brain.backup, brain.start, brain.end)
 
     except (Exception, ValueError) as e:
         print(f"Error {e}")
