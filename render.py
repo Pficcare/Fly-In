@@ -39,10 +39,11 @@ class Render:
         self.pixel_dic:dict[str, tuple[int, int]] = {}
         self.pixart()
         self.clock = pygame.time.Clock()
-        self.window = pygame.display.set_mode((self.width, self.height))
+        self.window = None
         self.turn: int = 0
         self.pause: bool = False
         self.turn_time:int = 0
+        self.run: bool = True
 
 
     def mesures(self) -> None:
@@ -87,15 +88,16 @@ class Render:
     def run_run(self) -> None:
         
         pygame.init()
+        self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
 
         
-        while True:
-            self.clock.tick(60)
+        while self.run:
 
+            self.clock.tick(60)
             for el in pygame.event.get():
                 if el.type == pygame.QUIT:
-                    break
+                    self.run = False
             self.window.fill((40,40,40))
             pygame.display.flip()
         
