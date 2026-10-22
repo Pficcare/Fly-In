@@ -38,6 +38,8 @@ class Render:
         self.mesures()
         self.pixel_dic:dict[str, tuple[int, int]] = {}
         self.pixart()
+        self.color_zone: dict[str, str | None] = {}
+        self.colors()
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
         self.turn: int = 0
@@ -87,6 +89,13 @@ class Render:
 
             self.pixel_dic[el.name] = (px, py)
 
+    def colors(self) -> None:
+
+        for zone in self.map.nodes.values():
+            self.color_zone[zone.name] = zone.color
+
+
+
     def run_run(self) -> None:
         
         pygame.init()
@@ -123,11 +132,34 @@ class Render:
                     self.turn_time = 0
 
             self.window.fill((40,40,40))
+            self.draw_map()
             pygame.display.flip()
         
 
 
         pygame.quit()
+
+    def draw_map(self) -> None:
+
+        state: dict[int, tuple[str, str]] = self.timeline.sequence[self.turn]
+
+        # 1. Connexions : une ligne par paire (chaque lien est stocke 2 fois)
+        for src, nbor in self.map.connections.items():
+            for dest in nbor:
+                pygame.draw.line(self.window, "white", self.pixel_dic[src], self.pixel_dic[dest], width=2)
+
+        # 2. Zones : cercle couleur de la zone + bordure selon zone_status
+        for zone in self.map.nodes.values():
+            pass
+
+        # 3. Drones : pixel de la zone ou milieu du lien, regroupes par pixel
+        spots: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
+        for src, dest in state.values():
+            pass
+        for pos, nb in spots.items():
+            pass  # marqueur + "xn" si nb > 1
+
+        # 4. Texte : tour / last_turn, vitesse, pause
 
 
 
