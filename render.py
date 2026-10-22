@@ -38,7 +38,7 @@ class Render:
         self.mesures()
         self.pixel_dic:dict[str, tuple[int, int]] = {}
         self.pixart()
-        self.color_zone: dict[str, str | None] = {}
+        self.color_zone: dict[str, pygame.Color] = {}
         self.colors()
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
@@ -92,7 +92,10 @@ class Render:
     def colors(self) -> None:
 
         for zone in self.map.nodes.values():
-            self.color_zone[zone.name] = zone.color
+            if zone.color in pygame.color.THECOLORS:
+                self.color_zone[zone.name] = pygame.Color(zone.color)
+            else:
+                self.color_zone[zone.name] = pygame.Color("grey") # defaut for now
 
 
 
