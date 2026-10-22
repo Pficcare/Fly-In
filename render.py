@@ -39,7 +39,7 @@ class Render:
         self.pixel_dic:dict[str, tuple[int, int]] = {}
         self.pixart()
         self.clock = pygame.time.Clock()
-        self.window = None
+        self.window: pygame.Surface
         self.turn: int = 0
         self.pause: bool = False
         self.turn_time:int = 0
