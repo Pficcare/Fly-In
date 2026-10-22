@@ -4,6 +4,7 @@ from algo import PathFinder
 from engine import Engine
 from booking import Clock
 from timeline import Timeline
+from render import Render
 import sys
 
 
@@ -34,7 +35,14 @@ def main() -> None:
         brain = Engine(solution, data_parsed, clock.start_turn)
         brain.engine_v12_biturbo()
         brain.print_backup()
-        timeline = Timeline(brain.backup, brain.start, brain.end)
+        timeline = Timeline(
+            brain.backup,
+            data_parsed.start.name,
+            data_parsed.end.name,
+            data_parsed.map_drone_lmt,
+        )
+        render = Render(data_parsed, timeline)
+        render.run_run()
 
     except (Exception, ValueError) as e:
         print(f"Error {e}")
