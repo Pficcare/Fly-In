@@ -43,6 +43,8 @@ class Render:
         self.turn: int = 0
         self.pause: bool = False
         self.turn_time:int = 0
+        self.speeds: list[int] = [500, 250, 125, 2000, 1000]  # ms par tour
+        self.speed_i: int = 0
         self.run: bool = True
 
 
@@ -90,14 +92,36 @@ class Render:
         pygame.init()
         self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
+        last_turn: int = self.timeline.laps()
 
-        
         while self.run:
 
-            self.clock.tick(60)
+            tick: int = self.clock.tick(60)  # ms depuis la frame precedente
             for el in pygame.event.get():
                 if el.type == pygame.QUIT:
                     self.run = False
+                elif el.type == pygame.KEYDOWN:
+                    if el.key == pygame.K_SPACE:
+                        self.pause = not self.pause
+                    elif el.key == pygame.K_RIGHT:
+                        self.turn = min(self.turn + 1, last_turn)
+                        self.turn_time = 0
+                    elif el.key == pygame.K_LEFT:
+                        self.turn = max(self.turn - 1, 0)
+                        self.turn_time = 0
+                    elif el.key == pygame.K_r:
+                        self.turn = 0
+                        self.turn_time = 0
+                        self.pause = False
+                    elif el.key == pygame.K_v:
+                        self.speed_i = (self.speed_i + 1) % len(self.speeds)
+
+            if not self.pause and self.turn < last_turn:
+                self.turn_time += tick
+                if self.turn_time >= self.speeds[self.speed_i]:
+                    self.turn += 1
+                    self.turn_time = 0
+
             self.window.fill((40,40,40))
             pygame.display.flip()
         
