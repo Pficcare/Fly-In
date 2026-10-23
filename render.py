@@ -1,6 +1,7 @@
+import pygame
+
 from parser import Map
 from timeline import Timeline
-import pygame
 
 # class Zone:
 #     name: str
@@ -36,7 +37,7 @@ class Render:
         self.scale_x: int
         self.scale_y: int
         self.mesures()
-        self.pixel_dic:dict[str, tuple[int, int]] = {}
+        self.pixel_dic: dict[str, tuple[int, int]] = {}
         self.pixart()
         self.color_zone: dict[str, pygame.Color] = {}
         self.colors()
@@ -46,19 +47,18 @@ class Render:
         self.status_border: dict[str, tuple[str, int]] = {  # couleur, px
             "priority": ("green", 3),
             "restricted": ("orange", 3),
-            "blocked": ("red", 5), # pas de color pour normal
+            "blocked": ("red", 5),  # pas de color pour normal
         }
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
-        self.font: pygame.font.Font         
+        self.font: pygame.font.Font
         self.last_turn: int = self.timeline.laps()
         self.turn: int = 0
         self.pause: bool = False
-        self.turn_time:int = 0
+        self.turn_time: int = 0
         self.speeds: list[int] = [500, 250, 125, 2000, 1000]  # ms par tour
         self.speed_i: int = 0
         self.run: bool = True
-
 
     def mesures(self) -> None:
 
@@ -105,19 +105,16 @@ class Render:
             if zone.color in pygame.color.THECOLORS:
                 self.color_zone[zone.name] = pygame.Color(zone.color)
             else:
-                self.color_zone[zone.name] = pygame.Color("grey") # defaut for now
-
-
+                self.color_zone[zone.name] = pygame.Color("grey")  # defaut for now
 
     def run_run(self) -> None:
-        
+
         pygame.init()
         self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
         self.font = pygame.font.Font(None, 24)
 
         while self.run:
-
             tick: int = self.clock.tick(60)  # ms depuis la frame precedente
             for el in pygame.event.get():
                 if el.type == pygame.QUIT:
@@ -144,11 +141,9 @@ class Render:
                     self.turn += 1
                     self.turn_time = 0
 
-            self.window.fill((40,40,40))
+            self.window.fill((40, 40, 40))
             self.draw_map()
             pygame.display.flip()
-        
-
 
         pygame.quit()
 
@@ -158,31 +153,36 @@ class Render:
 
         for src, nbor in self.map.connections.items():
             for dest in nbor:
-                pygame.draw.line(self.window, "white", self.pixel_dic[src], self.pixel_dic[dest], width=2)
+                if src < dest:
+                    pygame.draw.line(
+                        self.window,
+                        "white",
+                        self.pixel_dic[src],
+                        self.pixel_dic[dest],
+                        width=2,
+                    )
 
         for zone in self.map.nodes.values():
             center: tuple[int, int] = self.pixel_dic[zone.name]
             pygame.draw.circle(
-                self.window, self.color_zone[zone.name], center,
+                self.window,
+                self.color_zone[zone.name],
+                center,
                 self.zone_radius,
             )
-            if zone.zone_status in self.status_border:  
+            if zone.zone_status in self.status_border:
                 color, width = self.status_border[zone.zone_status]
-                pygame.draw.circle(
-                    self.window, color, center, self.zone_radius, width
-                )
+                pygame.draw.circle(self.window, color, center, self.zone_radius, width)
 
         drone_to_draw: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
         for src, dest in state_turn.values():
             if src == dest:
                 pos = self.pixel_dic[src]
             else:
-                x = (self.pixel_dic[src][0] + self.pixel_dic[dest][0])//2
-                y = (self.pixel_dic[src][1] + self.pixel_dic[dest][1])//2
-                pos = (x,y)
+                x = (self.pixel_dic[src][0] + self.pixel_dic[dest][0]) // 2
+                y = (self.pixel_dic[src][1] + self.pixel_dic[dest][1]) // 2
+                pos = (x, y)
             drone_to_draw[pos] = drone_to_draw.get(pos, 0) + 1
-
-
 
         start_end = (
             self.pixel_dic[self.map.start.name],
@@ -201,7 +201,9 @@ class Render:
                 for i in range(nb):
                     shift = (2 * i - (nb - 1)) * self.drone_spacing // 2
                     pygame.draw.circle(
-                        self.window, "cyan", (pos[0] + shift, pos[1]),
+                        self.window,
+                        "cyan",
+                        (pos[0] + shift, pos[1]),
                         self.drone_radius,
                     )
 
@@ -210,13 +212,3 @@ class Render:
         if self.pause:
             hud += " · PAUSE"
         self.window.blit(self.font.render(hud, True, "white"), (8, 6))
-
-
-
-
-
-
-
-
-
-
