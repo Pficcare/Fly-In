@@ -206,7 +206,9 @@ class Render:
                     )
 
         hud = f"Tour {self.turn}/{self.last_turn}"
-        # TODO : ajouter vitesse (self.speeds[self.speed_i]) et PAUSE
+        hud += f" · {self.speeds[self.speed_i]} ms/tour"
+        if self.pause:
+            hud += " · PAUSE"
         self.window.blit(self.font.render(hud, True, "white"), (8, 6))
 
 
