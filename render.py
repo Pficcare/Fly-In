@@ -52,6 +52,7 @@ class Render:
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
         self.font: pygame.font.Font
+        self.font_small: pygame.font.Font  # noms des zones
         self.last_turn: int = self.timeline.laps()
         self.turn: int = 0
         self.pause: bool = False
@@ -113,6 +114,7 @@ class Render:
         self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
         self.font = pygame.font.Font(None, 24)
+        self.font_small = pygame.font.Font(None, 16)
 
         while self.run:
             tick: int = self.clock.tick(60)  # ms depuis la frame precedente
@@ -173,6 +175,11 @@ class Render:
             if zone.zone_status in self.status_border:
                 color, width = self.status_border[zone.zone_status]
                 pygame.draw.circle(self.window, color, center, self.zone_radius, width)
+            name = self.font_small.render(zone.name, True, "white")
+            rect = name.get_rect(
+                midtop=(center[0], center[1] + self.zone_radius + 4)
+            )
+            self.window.blit(name, rect)
 
         drone_to_draw: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
         for src, dest in state_turn.values():
