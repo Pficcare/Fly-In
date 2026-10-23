@@ -26,7 +26,7 @@ class Render:
         self.timeline = timeline
         self.width: int = width
         self.height: int = height
-        self.border: int = 30
+        self.border: int = 60  # a check si ca reste 60, fix le bug afficage avec 30
         self.mid_x: int = self.width // 2  # A utiliser si scalex = 0
         self.mid_y: int = self.height // 2  # A utiliser si scaley = 0
         self.min_x: int
@@ -50,6 +50,8 @@ class Render:
         }
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
+        self.font: pygame.font.Font         
+        self.last_turn: int = self.timeline.laps()
         self.turn: int = 0
         self.pause: bool = False
         self.turn_time:int = 0
@@ -112,7 +114,7 @@ class Render:
         pygame.init()
         self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
-        last_turn: int = self.timeline.laps()
+        self.font = pygame.font.Font(None, 24)
 
         while self.run:
 
@@ -124,7 +126,7 @@ class Render:
                     if el.key == pygame.K_SPACE:
                         self.pause = not self.pause
                     elif el.key == pygame.K_RIGHT:
-                        self.turn = min(self.turn + 1, last_turn)
+                        self.turn = min(self.turn + 1, self.last_turn)
                         self.turn_time = 0
                     elif el.key == pygame.K_LEFT:
                         self.turn = max(self.turn - 1, 0)
@@ -136,7 +138,7 @@ class Render:
                     elif el.key == pygame.K_v:
                         self.speed_i = (self.speed_i + 1) % len(self.speeds)
 
-            if not self.pause and self.turn < last_turn:
+            if not self.pause and self.turn < self.last_turn:
                 self.turn_time += tick
                 if self.turn_time >= self.speeds[self.speed_i]:
                     self.turn += 1
@@ -189,7 +191,12 @@ class Render:
         for pos, nb in drone_to_draw.items():
             if pos in start_end:
                 pygame.draw.circle(self.window, "cyan", pos, self.drone_radius)
-                # TODO : afficher f"×{nb}" si nb > 1 (font)
+                if nb > 1:
+                    text = self.font.render(f"×{nb}", True, "white")
+                    rect = text.get_rect(
+                        midleft=(pos[0] + self.drone_radius + 4, pos[1])
+                    )
+                    self.window.blit(text, rect)
             else:
                 for i in range(nb):
                     shift = (2 * i - (nb - 1)) * self.drone_spacing // 2
@@ -198,7 +205,9 @@ class Render:
                         self.drone_radius,
                     )
 
-        # 4. Texte : tour / last_turn, vitesse, pause
+        hud = f"Tour {self.turn}/{self.last_turn}"
+        # TODO : ajouter vitesse (self.speeds[self.speed_i]) et PAUSE
+        self.window.blit(self.font.render(hud, True, "white"), (8, 6))
 
 
 
