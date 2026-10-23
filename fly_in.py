@@ -26,10 +26,8 @@ def main() -> None:
     try:
         p = PrinceOfParser(instruction)
         data_parsed = p.split_not_spit() # return Map
-        print (data_parsed)
         path = PathFinder(data_parsed)
         solution:list[str] = path.dijkstra_not_djikarta() # return path solved
-        print (solution)
         clock = Clock(solution, data_parsed)
         clock.from_time_to_space()
         brain = Engine(solution, data_parsed, clock.start_turn)
