@@ -9,12 +9,12 @@ MYPY_FLAGS := --warn-return-any --warn-unused-ignores \
               --ignore-missing-imports --disallow-untyped-defs \
               --check-untyped-defs
 
-CONFIG := config.txt
+CONFIG := maps/easy/01_linear_path.txt
 .PHONY: help install run debug clean lint lint-strict
 
 help:
 	@echo "make install  create venv/ and install dev tools"
-	@echo "make run          generate and display a maze"
+	@echo "make run          generate and display"
 	@echo "make debug        same, under the pdb debugger"
 	@echo "make lint         flake8 + mypy with the required flags"
 	@echo "make lint-strict  flake8 + mypy --strict"
