@@ -60,6 +60,9 @@ class Render:
         self.speeds: list[int] = [500, 250, 125, 2000, 1000]  # ms par tour
         self.speed_i: int = 0
         self.run: bool = True
+        self.controls: str = (
+            "SPACE pause · <-/-> tour · R reset · V vitesse · ESC quitter"
+        )
 
     def mesures(self) -> None:
 
@@ -122,7 +125,9 @@ class Render:
                 if el.type == pygame.QUIT:
                     self.run = False
                 elif el.type == pygame.KEYDOWN:
-                    if el.key == pygame.K_SPACE:
+                    if el.key == pygame.K_ESCAPE:
+                        self.run = False
+                    elif el.key == pygame.K_SPACE:
                         self.pause = not self.pause
                     elif el.key == pygame.K_RIGHT:
                         self.turn = min(self.turn + 1, self.last_turn)
@@ -219,3 +224,6 @@ class Render:
         if self.pause:
             hud += " · PAUSE"
         self.window.blit(self.font.render(hud, True, "white"), (8, 6))
+        controls = self.font_small.render(self.controls, True, "white")
+        rect = controls.get_rect(topright=(self.width - 8, 6))
+        self.window.blit(controls, rect)
