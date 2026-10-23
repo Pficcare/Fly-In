@@ -11,10 +11,12 @@ MYPY_FLAGS := --warn-return-any --warn-unused-ignores \
 
 CONFIG := maps/easy/01_linear_path.txt
 .PHONY: help install run debug clean lint lint-strict
+.DELETE_ON_ERROR:
 
 help:
-	@echo "make install  create venv/ and install dev tools"
-	@echo "make run          generate and display"
+	@echo "make install      create venv/ and install dependencies"
+	@echo "make run          run the drone simulation on $(CONFIG)"
+	@echo "                  other map: make run CONFIG=maps/<level>/<map>.txt"
 	@echo "make debug        same, under the pdb debugger"
 	@echo "make lint         flake8 + mypy with the required flags"
 	@echo "make lint-strict  flake8 + mypy --strict"
@@ -28,18 +30,18 @@ run: $(ACTIVEV)
 	$(PYTHON) fly_in.py $(CONFIG)
 
 install: $(ACTIVEV)
-	@echo "Venv already installed"
+	@echo "Venv ready"
 
 debug: $(ACTIVEV)
 	$(PYTHON) -m pdb fly_in.py $(CONFIG)
 
 clean:
 	find . -type d -name __pycache__ -exec rm -fr {} +
-	rm -fr .mypy_cache
+	rm -fr .mypy_cache .pytest_cache
 	rm -f .coverage
 
 lint: $(ACTIVEV)
-	$(FLAKE8) . 
+	$(FLAKE8) .
 	$(MYPY) . $(MYPY_FLAGS)
 
 lint-strict: $(ACTIVEV)
