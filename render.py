@@ -41,6 +41,8 @@ class Render:
         self.color_zone: dict[str, pygame.Color] = {}
         self.colors()
         self.zone_radius: int = 15
+        self.drone_radius: int = 6
+        self.drone_spacing: int = 12  # ecart entre drones d une meme zone
         self.status_border: dict[str, tuple[str, int]] = {  # couleur, px
             "priority": ("green", 3),
             "restricted": ("orange", 3),
@@ -150,7 +152,7 @@ class Render:
 
     def draw_map(self) -> None:
 
-        state: dict[int, tuple[str, str]] = self.timeline.sequence[self.turn]
+        state_turn: dict[int, tuple[str, str]] = self.timeline.sequence[self.turn]
 
         for src, nbor in self.map.connections.items():
             for dest in nbor:
@@ -168,11 +170,33 @@ class Render:
                     self.window, color, center, self.zone_radius, width
                 )
 
-        spots: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
-        for src, dest in state.values():
-            pass
-        for pos, nb in spots.items():
-            pass
+        drone_to_draw: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
+        for src, dest in state_turn.values():
+            if src == dest:
+                pos = self.pixel_dic[src]
+            else:
+                x = (self.pixel_dic[src][0] + self.pixel_dic[dest][0])//2
+                y = (self.pixel_dic[src][1] + self.pixel_dic[dest][1])//2
+                pos = (x,y)
+            drone_to_draw[pos] = drone_to_draw.get(pos, 0) + 1
+
+
+
+        start_end = (
+            self.pixel_dic[self.map.start.name],
+            self.pixel_dic[self.map.end.name],
+        )
+        for pos, nb in drone_to_draw.items():
+            if pos in start_end:
+                pygame.draw.circle(self.window, "cyan", pos, self.drone_radius)
+                # TODO : afficher f"×{nb}" si nb > 1 (font)
+            else:
+                for i in range(nb):
+                    shift = (2 * i - (nb - 1)) * self.drone_spacing // 2
+                    pygame.draw.circle(
+                        self.window, "cyan", (pos[0] + shift, pos[1]),
+                        self.drone_radius,
+                    )
 
         # 4. Texte : tour / last_turn, vitesse, pause
 
