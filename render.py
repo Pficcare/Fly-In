@@ -27,13 +27,17 @@ ASSETS: str = os.path.join(
 
 class Render:
     def __init__(
-        self, map_info: Map, timeline: Timeline, width: int = 1280, height: int = 720
+        self,
+        map_info: Map,
+        timeline: Timeline,
+        width: int = 1920,
+        height: int = 1080,
     ) -> None:
         self.map = map_info
         self.timeline = timeline
         self.width: int = width
         self.height: int = height
-        self.border: int = 60  # a check si ca reste 60, fix le bug afficage avec 30
+        self.border: int = 90  # 60 en 720p (30 coupait le HUD et le ×n)
         self.mid_x: int = self.width // 2  # A utiliser si scalex = 0
         self.mid_y: int = self.height // 2  # A utiliser si scaley = 0
         self.min_x: int
@@ -47,18 +51,20 @@ class Render:
         self.pixart()
         self.color_zone: dict[str, pygame.Color] = {}
         self.colors()
-        self.zone_radius: int = 15
-        self.drone_size: int = 24  
-        self.drone_spacing: int = 20  
+        self.zone_radius: int = 22
+        self.ring_width: int = 4  # anneau des zones normal
+        self.zone_fill: tuple[int, int, int] = (80, 80, 80)  # fond commun
+        self.drone_size: int = 48  # taille d origine du sprite
+        self.drone_spacing: int = 40  # drone visible ~38px de large
         self.frame_ms: int = 100  # duree d une image d animation
         self.drone_frames: list[pygame.Surface]
         self.death_frames: list[pygame.Surface]
         self.mothership_frames: list[pygame.Surface]
         self.background: pygame.Surface
         self.status_border: dict[str, tuple[str, int]] = {  # couleur, px
-            "priority": ("green", 3),
-            "restricted": ("orange", 3),
-            "blocked": ("red", 5),  # pas de color pour normal
+            "priority": ("green", 4),
+            "restricted": ("orange", 4),
+            "blocked": ("red", 7),  # normal -> couleur de la zone
         }
         self.clock = pygame.time.Clock()
         self.window: pygame.Surface
@@ -151,12 +157,12 @@ class Render:
         pygame.init()
         self.window = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Fly-In")
-        self.font = pygame.font.Font(None, 24)
-        self.font_small = pygame.font.Font(None, 16)
+        self.font = pygame.font.Font(None, 36)
+        self.font_small = pygame.font.Font(None, 24)
         # convert/convert_alpha exigent une fenetre ouverte -> apres set_mode
         self.drone_frames = self.load_strip("drone_walk.png", self.drone_size)
         self.death_frames = self.load_strip("drone_death.png", self.drone_size)
-        self.mothership_frames = self.load_strip("mothership_drop.png", 48)
+        self.mothership_frames = self.load_strip("mothership_drop.png", 96)
         self.load_background("bg_purple_nebula.png", 120)
 
         while self.run:
@@ -206,23 +212,27 @@ class Render:
                         "white",
                         self.pixel_dic[src],
                         self.pixel_dic[dest],
-                        width=2,
+                        width=3,
                     )
 
         for zone in self.map.nodes.values():
             center: tuple[int, int] = self.pixel_dic[zone.name]
             pygame.draw.circle(
-                self.window,
-                self.color_zone[zone.name],
-                center,
-                self.zone_radius,
+                self.window, self.zone_fill, center, self.zone_radius
             )
+            # anneau : couleur du statut s il en a un, sinon celle de la zone
+            color: str | pygame.Color
+            width: int
             if zone.zone_status in self.status_border:
                 color, width = self.status_border[zone.zone_status]
-                pygame.draw.circle(self.window, color, center, self.zone_radius, width)
+            else:
+                color, width = self.color_zone[zone.name], self.ring_width
+            pygame.draw.circle(
+                self.window, color, center, self.zone_radius, width
+            )
             name = self.font_small.render(zone.name, True, "white")
             rect = name.get_rect(
-                midtop=(center[0], center[1] + self.zone_radius + 4)
+                midtop=(center[0], center[1] + self.zone_radius + 6)
             )
             self.window.blit(name, rect)
 
@@ -250,7 +260,7 @@ class Render:
                 if nb > 1:
                     text = self.font.render(f"×{nb}", True, "white")
                     rect = text.get_rect(
-                        midleft=(pos[0] + self.zone_radius + 4, pos[1])
+                        midleft=(pos[0] + self.zone_radius + 6, pos[1])
                     )
                     self.window.blit(text, rect)
             else:
@@ -263,9 +273,9 @@ class Render:
         hud += f" · {self.speeds[self.speed_i]} ms/tour"
         if self.pause:
             hud += " · PAUSE"
-        self.window.blit(self.font.render(hud, True, "white"), (8, 6))
+        self.window.blit(self.font.render(hud, True, "white"), (12, 9))
         controls = self.font_small.render(self.controls, True, "white")
-        rect = controls.get_rect(topright=(self.width - 8, 6))
+        rect = controls.get_rect(topright=(self.width - 12, 9))
         self.window.blit(controls, rect)
 
 
