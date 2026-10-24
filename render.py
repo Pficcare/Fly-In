@@ -58,7 +58,6 @@ class Render:
         self.drone_spacing: int = 57  # drone visible ~57px de large
         self.frame_ms: int = 100  # duree d une image d animation
         self.drone_frames: list[pygame.Surface]
-        self.death_frames: list[pygame.Surface]
         self.mothership_frames: list[pygame.Surface]
         self.background: pygame.Surface
         self.status_border: dict[str, tuple[str, int]] = {  # couleur, px
@@ -161,7 +160,6 @@ class Render:
         self.font_small = pygame.font.Font(None, 24)
         # convert/convert_alpha exigent une fenetre ouverte -> apres set_mode
         self.drone_frames = self.load_strip("drone_walk.png", self.drone_size)
-        self.death_frames = self.load_strip("drone_death.png", self.drone_size)
         self.mothership_frames = self.load_strip("mothership_drop.png", 96)
         self.load_background("bg_purple_nebula.png", 120)
 
@@ -200,6 +198,15 @@ class Render:
 
         pygame.quit()
 
+    def drone_mov(self, src: str, dest: str) -> tuple[int, int]:
+
+        if src == dest:  # dans une zone
+            return self.pixel_dic[src]
+        # en vol vers une zone restricted : milieu de la connexion
+        x = (self.pixel_dic[src][0] + self.pixel_dic[dest][0]) // 2
+        y = (self.pixel_dic[src][1] + self.pixel_dic[dest][1]) // 2
+        return (x, y)
+
     def draw_map(self) -> None:
 
         state_turn: dict[int, tuple[str, str]] = self.timeline.sequence[self.turn]
@@ -236,15 +243,26 @@ class Render:
             )
             self.window.blit(name, rect)
 
-        drone_to_draw: dict[tuple[int, int], int] = {}  # pixel -> nb de drones
-        for src, dest in state_turn.values():
-            if src == dest:
-                pos = self.pixel_dic[src]
+        next_turn: int = min(self.turn + 1, self.last_turn)
+        state_next: dict[int, tuple[str, str]]
+        state_next = self.timeline.sequence[next_turn]
+        p: float = self.turn_time / self.speeds[self.speed_i]  # 0 -> 1
+
+        drone_to_draw: dict[tuple[int, int], int] = {}  # immobiles -> nb
+        moving: list[tuple[int, int]] = []  # en vol : position interpolee
+        for drone, (src, dest) in state_turn.items():
+            ax, ay = self.drone_mov(src, dest)
+            next_src, next_dest = state_next[drone]
+            bx, by = self.drone_mov(next_src, next_dest)
+            if (ax, ay) == (bx, by):
+                drone_to_draw[(ax, ay)] = drone_to_draw.get((ax, ay), 0) + 1
             else:
-                x = (self.pixel_dic[src][0] + self.pixel_dic[dest][0]) // 2
-                y = (self.pixel_dic[src][1] + self.pixel_dic[dest][1]) // 2
-                pos = (x, y)
-            drone_to_draw[pos] = drone_to_draw.get(pos, 0) + 1
+                # depart + fraction p du trajet (B - A) ; int() car pixel
+                # ex: ax=240, bx=315, p=0.5 -> 240 + 75 * 0.5 = 277
+                # p=0 -> 240 (depart), p=1 -> 315 (arrivee)
+                x = int(ax + (bx - ax) * p)
+                y = int(ay + (by - ay) * p)
+                moving.append((x, y))
 
         start_end = (
             self.pixel_dic[self.map.start.name],
@@ -268,6 +286,8 @@ class Render:
                     shift = (2 * i - (nb - 1)) * self.drone_spacing // 2
                     center = (pos[0] + shift, pos[1])
                     self.window.blit(sprite, sprite.get_rect(center=center))
+        for pos in moving:  # superposition acceptee
+            self.window.blit(sprite, sprite.get_rect(center=pos))
 
         hud = f"Tour {self.turn}/{self.last_turn}"
         hud += f" · {self.speeds[self.speed_i]} ms/tour"
