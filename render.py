@@ -54,8 +54,8 @@ class Render:
         self.zone_radius: int = 22
         self.ring_width: int = 4  # anneau des zones normal
         self.zone_fill: tuple[int, int, int] = (80, 80, 80)  # fond commun
-        self.drone_size: int = 48  # taille d origine du sprite
-        self.drone_spacing: int = 40  # drone visible ~38px de large
+        self.drone_size: int = 72  # 48px x 1.5
+        self.drone_spacing: int = 57  # drone visible ~57px de large
         self.frame_ms: int = 100  # duree d une image d animation
         self.drone_frames: list[pygame.Surface]
         self.death_frames: list[pygame.Surface]
@@ -209,7 +209,7 @@ class Render:
                 if src < dest:
                     pygame.draw.line(
                         self.window,
-                        "white",
+                        self.zone_fill,
                         self.pixel_dic[src],
                         self.pixel_dic[dest],
                         width=3,
