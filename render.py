@@ -1,7 +1,13 @@
+import os
+
 import pygame
 
 from parser import Map
 from timeline import Timeline
+
+ASSETS: str = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "assets"  # chemin absolu
+)
 
 # class Zone:
 #     name: str
@@ -42,8 +48,13 @@ class Render:
         self.color_zone: dict[str, pygame.Color] = {}
         self.colors()
         self.zone_radius: int = 15
-        self.drone_radius: int = 6
-        self.drone_spacing: int = 12  # ecart entre drones d une meme zone
+        self.drone_size: int = 24  
+        self.drone_spacing: int = 20  
+        self.frame_ms: int = 100  # duree d une image d animation
+        self.drone_frames: list[pygame.Surface]
+        self.death_frames: list[pygame.Surface]
+        self.mothership_frames: list[pygame.Surface]
+        self.background: pygame.Surface
         self.status_border: dict[str, tuple[str, int]] = {  # couleur, px
             "priority": ("green", 3),
             "restricted": ("orange", 3),
@@ -111,6 +122,30 @@ class Render:
             else:
                 self.color_zone[zone.name] = pygame.Color("grey")  # defaut for now
 
+    def load_strip(self, file: str, size: int) -> list[pygame.Surface]:
+
+        
+        sheet = pygame.image.load(os.path.join(ASSETS, file)).convert_alpha()
+        side: int = sheet.get_height()
+        frames: list[pygame.Surface] = []
+
+        for i in range(sheet.get_width() // side):
+            frame = sheet.subsurface((i * side, 0, side, side))
+            frames.append(pygame.transform.scale(frame, (size, size)))
+        return frames
+
+    def load_background(self, file: str, veil: int) -> None:
+
+        
+        tile = pygame.image.load(os.path.join(ASSETS, file)).convert()
+        self.background = pygame.Surface((self.width, self.height))
+        for x in range(0, self.width, tile.get_width()):
+            for y in range(0, self.height, tile.get_height()):
+                self.background.blit(tile, (x, y))
+        shade = pygame.Surface((self.width, self.height))
+        shade.set_alpha(veil)  # voile noir : 0 = aucun, 255 = tout noir
+        self.background.blit(shade, (0, 0))
+
     def run_run(self) -> None:
 
         pygame.init()
@@ -118,6 +153,11 @@ class Render:
         pygame.display.set_caption("Fly-In")
         self.font = pygame.font.Font(None, 24)
         self.font_small = pygame.font.Font(None, 16)
+        # convert/convert_alpha exigent une fenetre ouverte -> apres set_mode
+        self.drone_frames = self.load_strip("drone_walk.png", self.drone_size)
+        self.death_frames = self.load_strip("drone_death.png", self.drone_size)
+        self.mothership_frames = self.load_strip("mothership_drop.png", 48)
+        self.load_background("bg_purple_nebula.png", 120)
 
         while self.run:
             tick: int = self.clock.tick(60)  # ms depuis la frame precedente
@@ -148,7 +188,7 @@ class Render:
                     self.turn += 1
                     self.turn_time = 0
 
-            self.window.fill((40, 40, 40))
+            self.window.blit(self.background, (0, 0))
             self.draw_map()
             pygame.display.flip()
 
@@ -200,24 +240,24 @@ class Render:
             self.pixel_dic[self.map.start.name],
             self.pixel_dic[self.map.end.name],
         )
+         ## avance avec le temps reel, pas avec les tours
+        nb_frames: int = len(self.drone_frames)
+        i_frame = pygame.time.get_ticks() // self.frame_ms % nb_frames
+        sprite = self.drone_frames[i_frame]
         for pos, nb in drone_to_draw.items():
             if pos in start_end:
-                pygame.draw.circle(self.window, "cyan", pos, self.drone_radius)
+                self.window.blit(sprite, sprite.get_rect(center=pos))
                 if nb > 1:
                     text = self.font.render(f"×{nb}", True, "white")
                     rect = text.get_rect(
-                        midleft=(pos[0] + self.drone_radius + 4, pos[1])
+                        midleft=(pos[0] + self.zone_radius + 4, pos[1])
                     )
                     self.window.blit(text, rect)
             else:
                 for i in range(nb):
                     shift = (2 * i - (nb - 1)) * self.drone_spacing // 2
-                    pygame.draw.circle(
-                        self.window,
-                        "cyan",
-                        (pos[0] + shift, pos[1]),
-                        self.drone_radius,
-                    )
+                    center = (pos[0] + shift, pos[1])
+                    self.window.blit(sprite, sprite.get_rect(center=center))
 
         hud = f"Tour {self.turn}/{self.last_turn}"
         hud += f" · {self.speeds[self.speed_i]} ms/tour"
@@ -227,3 +267,6 @@ class Render:
         controls = self.font_small.render(self.controls, True, "white")
         rect = controls.get_rect(topright=(self.width - 8, 6))
         self.window.blit(controls, rect)
+
+
+
