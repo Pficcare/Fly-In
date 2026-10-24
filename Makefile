@@ -9,7 +9,7 @@ MYPY_FLAGS := --warn-return-any --warn-unused-ignores \
               --ignore-missing-imports --disallow-untyped-defs \
               --check-untyped-defs
 
-CONFIG := maps/easy/01_linear_path.txt
+CONFIG := maps/hard/01_maze_nightmare.txt
 .PHONY: help install run debug clean lint lint-strict
 .DELETE_ON_ERROR:
 
