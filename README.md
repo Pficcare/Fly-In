@@ -53,6 +53,7 @@ its own:
 
 | File | Role |
 |---|---|
+| `errors.py` | exception hierarchy: `FlyInError` → `ParseError`, `NoPathError`, `SimulationError` |
 | `parser.py` | map file → `Map` (zones, connections, number of drones) |
 | `zone.py` | `Zone` (frozen dataclass) and `ZONE_INFO` (rules of each zone type) |
 | `algo.py` | `PathFinder`: path search |
@@ -239,6 +240,41 @@ drone every 2 turns. Four other maps contain `restricted` zones, but Dijkstra's
 path avoids them, so nothing changes there. On the challenger map, 43 is
 also the lower bound `19 + 25 - 1`: no routing can do better.
 
+### Error handling
+
+A bad input must never crash the program: it stops with a clear message on
+**stderr** and exit code `1`. Every error the user can cause inherits from one
+class, `FlyInError` (`errors.py`), so `fly_in.py` needs a single `except`:
+
+| Exception | Raised by | When |
+|---|---|---|
+| `ParseError(line, cause)` | `PrinceOfParser` | any invalid line; the message is `line N: cause` |
+| `NoPathError` | `PathFinder` | no path from `start` to `end` (missing connections, `blocked` zones) |
+| `SimulationError` | `Engine`, `Drone`, `Timeline` | guards that should never fire (e.g. a drone cannot land, no drone can move): they mean `Clock` and the Engine disagree |
+
+What the parser checks:
+
+- **Line by line** (the message gives the line number): unknown line type,
+  `nb_drones` not on the first line or defined twice, wrong number of fields,
+  coordinates and capacities that are not (positive) integers, a dash in a zone
+  name, a zone defined twice, two `start_hub` / `end_hub`, brackets not closed
+  or text after `]`, metadata not written `key=value`, unknown or repeated
+  metadata key, invalid `zone=` type, connection to an unknown zone, to itself,
+  or already defined (`a-b` and `b-a` are the same connection).
+- **At the end of the file** (no line to point to): missing `nb_drones`,
+  `start_hub` or `end_hub`.
+- `max_drones` on `start_hub` / `end_hub` is ignored, as the subject requires.
+
+Other cases handled in `fly_in.py`: wrong number of arguments (usage message),
+file that cannot be read (missing, directory, no permission, not a text file).
+There is no `except Exception`: an unexpected exception would be a bug in the
+code, and hiding it behind a generic message would make it harder to find.
+
+The text output is printed only once the simulation is valid. The window has
+its own `try`: if it cannot open (no display, missing asset), a warning is
+printed and the program still ends normally, since the text output is already
+complete. `Ctrl+C` exits with code `130`, without a traceback.
+
 ## Visual representation
 
 A **pygame-ce** window (1920×1080) replays the simulation after the terminal
@@ -322,6 +358,17 @@ D3-goal D4-path_a
 D4-goal
 ```
 
+Invalid input (`maps/easy/02_simple_fork.txt`, which starts with a comment line,
+with `connection: path_a-junction` added at the end, a duplicate of
+`junction-path_a`):
+
+```
+$ python3 fly_in.py bad_map.txt
+Error: line 15: duplicate connection 'path_a-junction'
+$ echo $?
+1
+```
+
 ## Resources
 
 - Dijkstra's algorithm — https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
@@ -333,8 +380,8 @@ D4-goal
 
 - Drone and mothership sprites (`drone_walk.png`, `mothership_drop.png`) —
   CraftPix, license: https://craftpix.net/file-licenses/ (`assets/license.txt`)
-- Space backgrounds (`bg_starfield.png`, `bg_purple_nebula.png`) — SBS
-  (TODO: author link + license)
+- Space backgrounds (`bg_starfield.png`, `bg_purple_nebula.png`) — SBS,
+  free to use for non-commercial projects
 
 ### AI usage
 
