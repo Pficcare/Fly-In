@@ -1,3 +1,4 @@
+from errors import NoPathError
 from parser import Map
 from zone import ZONE_INFO
 
@@ -73,7 +74,7 @@ class PathFinder:
         path: list[str] = []
 
         if end not in previous:
-            raise  # to add
+            raise NoPathError(f"no path from '{start}' to '{end}'")
 
         last_node = previous[end]
         path.append(end)
