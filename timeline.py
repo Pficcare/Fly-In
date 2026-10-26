@@ -1,3 +1,6 @@
+from errors import SimulationError
+
+
 class Timeline:
     def __init__(
         self,
@@ -42,5 +45,5 @@ class Timeline:
                     dest: str = tmp[2]
                     d_pos[d_id] = (src, dest)
                 else:
-                    raise ValueError
+                    raise SimulationError(f"invalid move '{el}' in the output")
             self.sequence.append(d_pos)
