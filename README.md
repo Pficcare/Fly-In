@@ -15,17 +15,34 @@ one line per turn.
 ## Instructions
 
 ```
-make install                     # create venv/ and install the dependencies
-python3 fly_in.py <map_file>     # run the simulation on a map
-make lint                        # flake8 + mypy with the required flags
-make clean                       # remove caches
+make install                          # create venv/ and install the dependencies
+make run                              # run on the default map (hard/01_maze_nightmare)
+make run CONFIG=maps/<level>/<map>.txt   # run on another map
+venv/bin/python fly_in.py <map_file>  # same, without make
+make debug                            # run under the pdb debugger
+make lint                             # flake8 + mypy with the required flags
+make lint-strict                      # flake8 + mypy --strict
+make clean                            # remove caches
 ```
 
-A graphical view is planned behind an option (see *Visual representation*):
+Requirements: Python 3.10+, and a display for the graphical window
+(`pygame-ce` is installed by `make install`).
 
-```
-python3 fly_in.py <map_file> --visual
-```
+The program first prints the whole simulation in the terminal (one line per
+turn), then opens the graphical window that replays it. Closing the window
+(or `ESC`) ends the program.
+
+Controls in the window:
+
+| Key | Action |
+|---|---|
+| `SPACE` | pause / play |
+| `→` / `←` | next / previous turn |
+| `R` | restart from turn 0 (and play) |
+| `V` | change the speed: 500 → 250 → 125 → 2000 → 1000 ms per turn |
+| `ESC` | quit |
+
+Auto-play stops on the last turn.
 
 ## Algorithm choices and implementation
 
@@ -42,7 +59,11 @@ its own:
 | `drone.py` | `Drone`: carries its own data (id, path, position, in-flight state) |
 | `engine.py` | `Engine`: runs the turns; `ZoneState` / `LinkZone`: capacity counters |
 | `booking.py` | `Clock`: reservation table, plans the timed itinerary of every drone |
-| `fly_in.py` | entry point: reads the argument, chains the steps, prints the result |
+| `timeline.py` | `Timeline`: printed output → position of every drone at every turn |
+| `render.py` | `Render`: pygame-ce window that replays the `Timeline` |
+| `fly_in.py` | entry point: reads the argument, chains the steps, prints the result, opens the window |
+| `maps/` | the provided maps (`easy`, `medium`, `hard`, `challenger`) |
+| `assets/` | sprites and backgrounds used by the window |
 
 ### Zone model
 
@@ -220,19 +241,55 @@ also the lower bound `19 + 25 - 1`: no routing can do better.
 
 ## Visual representation
 
-*In progress.* The plan:
+A **pygame-ce** window (1920×1080) replays the simulation after the terminal
+output (controls: see *Instructions*).
 
-- **pygame** window, opened only with `--visual`, so the text output stays clean
-  and the program still works on a machine without a display.
-- The renderer only reads the `Map` and the **printed output**, not the Engine
-  internals: it shows exactly what the program outputs, and does not depend on
-  the routing algorithm. Zone names contain no dash, so each move can be split
-  without ambiguity.
-- Zones are drawn with their map `color`, connections with a thickness based on
-  their capacity, and drones move smoothly between turns (interpolation with
-  easing). A drone in flight to a `restricted` zone is shown in the middle of the
-  connection, which makes the 2-turn cost visible.
-- Controls: pause, step forward/back, speed, restart.
+**Where the positions come from: `Timeline`.** The renderer does not read the
+Engine. After the simulation every drone is on `end`, so the drones themselves
+have no history; the only history is the printed output (`Engine.backup`, one
+list of moves per turn). `Timeline` re-reads it once, at creation, and builds
+the position of every drone at every turn:
+
+- turn 0 = all drones on `start`;
+- a drone absent from a turn line did not move: its position is carried forward
+  from the previous turn;
+- a position is a pair `(from, to)`: `from == to` in a zone, and
+  `D<id>-<zone1>-<zone2>` (in flight to a `restricted` zone) gives
+  `(zone1, zone2)`. Zone names contain no dash, so `split("-")` is never
+  ambiguous (2 parts = in a zone, 3 parts = in flight).
+
+So the window shows **exactly what the program prints**, and does not depend on
+how the routing was computed.
+
+**From map coordinates to pixels.** There is no grid: each axis gets its own
+scale so that the map fills the window minus a margin, and `y` is flipped
+(screen `y` goes down). If every zone has the same `x` (or `y`), that axis is
+centred instead of dividing by zero. All pixel positions are computed once.
+
+**What is drawn, in layers (each frame):**
+
+1. Background: a seamless space tile repeated over the window, darkened by a
+   black veil so the map stays readable (computed once).
+2. Connections: grey lines, each one drawn once (stored in both directions).
+3. Zones: same grey disc for all zones (hides line ends, contrast for the drone
+   sprite) and a coloured ring: green = `priority`, orange = `restricted`,
+   red (thicker) = `blocked`, otherwise the map `color`. A `color` that pygame
+   does not know (e.g. `rainbow` on the challenger map) falls back to grey.
+   The name is written under the zone.
+4. Drones: animated sprite. Several drones in the same intermediate zone are
+   drawn side by side; on `start` and `end` a single drone is drawn with a
+   counter `×n`. A drone in flight to a `restricted` zone is shown in the
+   middle of the connection, which makes the 2-turn cost visible.
+5. HUD: `Tour x/y · speed · PAUSE` at the top left, controls at the top right.
+
+**Movement between turns.** Drones do not jump from one turn to the next: with
+`p` = time spent in the current turn / duration of a turn (0 → 1), a moving
+drone is drawn at `A + (B - A) × p` (linear interpolation between its position
+at this turn and at the next one). The sprite animation is driven by real time,
+not by turns, so the rotors keep turning while paused.
+
+**Known limits:** zone names can overlap when zones are very close (challenger
+map); a zone of type `normal` with `color=red` looks like a `blocked` one.
 
 ## Example
 
@@ -270,7 +327,14 @@ D4-goal
 - Dijkstra's algorithm — https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 - Minimum-cost flow — https://en.wikipedia.org/wiki/Minimum-cost_flow_problem
 - Python documentation — https://docs.python.org/3/
-- pygame documentation — https://www.pygame.org/docs/
+- pygame-ce documentation — https://pyga.me/docs/
+
+### Assets
+
+- Drone and mothership sprites (`drone_walk.png`, `mothership_drop.png`) —
+  CraftPix, license: https://craftpix.net/file-licenses/ (`assets/license.txt`)
+- Space backgrounds (`bg_starfield.png`, `bg_purple_nebula.png`) — SBS
+  (TODO: author link + license)
 
 ### AI usage
 
