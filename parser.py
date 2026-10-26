@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 from dataclasses import dataclass
 
-from zone import Zone
+from errors import ParseError
+from zone import ZONE_INFO, Zone
 
 HUB_KEYS = frozenset(["nb_drones", "start_hub", "end_hub", "hub", "connection"])
+ZONE_KEYS = frozenset(["zone", "color", "max_drones"])
+LINK_KEYS = frozenset(["max_link_capacity"])
 
 
 # @dataclass(frozen=True)
@@ -29,65 +32,75 @@ class PrinceOfParser:
         self.nodes: dict[str, Zone] = {}
         self.connections: dict[str, dict[str, int]] = {}
         self.instruction = instruction
-        self.map_drone_lmt = 0
+        self.map_drone_lmt = 0  # 0 = nb_drones pas encore lu
         self.start: Zone | None = None
         self.end: Zone | None = None
 
     def split_not_spit(self) -> Map:
-        for line in self.instruction.strip().splitlines():
+        for num, line in enumerate(self.instruction.splitlines(), start=1):
             line, _, _ = line.partition("#")
 
             if not line.strip():  # si que " "
                 continue
-            hub, _, datas = line.partition(":")
+            hub, sep, datas = line.partition(":")
             hub = hub.strip()
 
-            if hub not in HUB_KEYS:
-                raise KeyError
+            if not sep or hub not in HUB_KEYS:
+                raise ParseError(num, f"unknown line type '{line.strip()}'")
+            if hub != "nb_drones" and self.map_drone_lmt == 0:
+                raise ParseError(num, "first line must be 'nb_drones: <nb>'")
+            if line.count("[") > 1 or line.count("[") != line.count("]"):
+                raise ParseError(num, "invalid brackets")
+            if "]" in line and not line.rstrip().endswith("]"):
+                raise ParseError(num, "text after ']'")
 
             if hub == "nb_drones":
-                nb = self.to_int(datas)
+                if self.map_drone_lmt != 0:
+                    raise ParseError(num, "nb_drones defined twice")
+                nb = self.to_int(datas, num, "nb_drones")
                 self.map_drone_lmt = nb
 
             elif hub == "start_hub" or hub == "end_hub":
                 datas, _, params = datas.partition("[")
+                if len(datas.split()) != 3:
+                    raise ParseError(num, f"expected '{hub}: <name> <x> <y>'")
                 node, sx, sy = datas.split()
-                (x, y) = self.convertion(sx, sy)
-                p1, p2 = params.split("=")  # color=green
-                color1: str | None = None
-                p2 = p2.strip("]")
-                if p1 == "color":
-                    color1 = p2
-                elif p1 != "max_drones":
-                    raise ValueError
-                z = Zone(node, (x, y), "normal", color1, max_drones=None)
+                if "-" in node:
+                    raise ParseError(num, f"zone name '{node}' has a dash")
+                if node in self.nodes:
+                    raise ParseError(num, f"zone '{node}' already defined")
+                (x, y) = self.convertion(sx, sy, num)
+                meta = self.param_or_not_param(params, num, ZONE_KEYS)
+                color1: str | None = meta.get("color")
+                zone1: str = meta.get("zone", "normal")
+                z = Zone(node, (x, y), zone1, color1, max_drones=None)
                 if hub == "start_hub":
+                    if self.start is not None:
+                        raise ParseError(num, "start_hub defined twice")
                     self.start = z
                 else:
+                    if self.end is not None:
+                        raise ParseError(num, "end_hub defined twice")
                     self.end = z
                 self.nodes[node] = z
                 self.connections[node] = {}
 
             elif hub == "hub":
                 datas, _, params = datas.partition("[")
+                if len(datas.split()) != 3:
+                    raise ParseError(num, "expected 'hub: <name> <x> <y>'")
                 node, sx, sy = datas.split()
-                (x, y) = self.convertion(sx, sy)
-                list_param = params.split()
-                color2: str | None = None
-                max_d = 1
-                zone: str = "normal"
-                for el in list_param:
-                    el = el.strip()
-                    p1, p2 = el.split("=")
-                    p2 = p2.strip("]")
-                    if p1 == "color":
-                        color2 = p2
-                    elif p1 == "max_drones":
-                        max_d = self.to_int(p2)
-                    elif p1 == "zone":
-                        zone = p2
-                    else:
-                        raise ValueError
+                if "-" in node:
+                    raise ParseError(num, f"zone name '{node}' has a dash")
+                if node in self.nodes:
+                    raise ParseError(num, f"zone '{node}' already defined")
+                (x, y) = self.convertion(sx, sy, num)
+                meta = self.param_or_not_param(params, num, ZONE_KEYS)
+                color2: str | None = meta.get("color")
+                max_d = self.to_int(
+                    meta.get("max_drones", "1"), num, "max_drones"
+                )
+                zone: str = meta.get("zone", "normal")
                 z = Zone(node, (x, y), zone, color2, max_d)
                 self.nodes[node] = z
                 self.connections[node] = {}
@@ -95,56 +108,79 @@ class PrinceOfParser:
             elif hub == "connection":
                 datas, _, params = datas.partition("[")
                 datas = datas.strip()
+                if len(datas.split()) != 1 or datas.count("-") != 1:
+                    raise ParseError(num, "expected 'connection: <a>-<b>'")
+                node, nbor = datas.split("-")
+                if node not in self.nodes:
+                    raise ParseError(num, f"unknown zone '{node}'")
+                if nbor not in self.nodes:
+                    raise ParseError(num, f"unknown zone '{nbor}'")
+                if node == nbor:
+                    raise ParseError(num, f"zone '{node}' linked to itself")
+                if nbor in self.connections[node]:
+                    raise ParseError(num, f"duplicate connection '{datas}'")
                 if not params:
-                    node, nbor = datas.split("-")
-                    node = node.strip()
-                    nbor = nbor.strip()
                     nb = 1
                 else:
-                    node, nbor = datas.split("-")
-                    node = node.strip()
-                    nbor = nbor.strip()
-                    link, snb = params.split("=")
-                    link = link.strip()
-                    snb = snb.strip("]")
-                    nb = int(snb)
-                if node not in self.nodes or nbor not in self.nodes:
-                    raise KeyError
+                    meta = self.param_or_not_param(params, num, LINK_KEYS)
+                    snb = meta.get("max_link_capacity", "1")
+                    nb = self.to_int(snb, num, "max_link_capacity")
                 self.connections[node][nbor] = nb
                 self.connections[nbor][node] = nb
 
-        if self.start is None or self.end is None:
-            raise ValueError
+        if self.map_drone_lmt == 0:
+            raise ParseError(None, "empty map: missing 'nb_drones'")
+        if self.start is None:
+            raise ParseError(None, "missing 'start_hub'")
+        if self.end is None:
+            raise ParseError(None, "missing 'end_hub'")
 
         return Map(self.nodes, self.connections, self.map_drone_lmt, self.start, self.end)
 
     @staticmethod
-    def convertion(x: str, y: str) -> tuple[int, int]:
+    def convertion(x: str, y: str, num: int) -> tuple[int, int]:
         try:
             a = int(x)
             b = int(y)
         except ValueError:
-            raise ValueError
+            raise ParseError(
+                num, f"coordinates must be integers, got '{x} {y}'"
+            ) from None
         return (a, b)
 
     @staticmethod
-    def to_int(value: str) -> int:
+    def to_int(value: str, num: int, what: str) -> int:
+        value = value.strip()
         try:
             nb = int(value)
         except ValueError:
-            raise ValueError
+            raise ParseError(
+                num, f"{what} must be a positive integer, got '{value}'"
+            ) from None
         if nb < 1:
-            raise ValueError
+            raise ParseError(num, f"{what} must be positive, got {nb}")
         else:
             return nb
 
     @staticmethod
-    def param_or_not_param(datas: str) -> dict[str, str]:
+    def param_or_not_param(
+        datas: str, num: int, allowed: frozenset[str]
+    ) -> dict[str, str]:
 
         param_values: dict[str, str] = {}
 
-        # A voir si je met en place ou pas, voir avec Professor
-        # Le code est tres similaire entre hub et start/end_hub
+        # "zone=restricted color=red]" -> {"zone": "restricted", ...}
+        for el in datas.strip().strip("]").split():
+            p1, equal, p2 = el.partition("=")
+            if not equal or not p1 or not p2 or "=" in p2:
+                raise ParseError(num, f"invalid metadata '{el}' (key=value)")
+            if p1 not in allowed:
+                raise ParseError(num, f"unknown metadata '{p1}'")
+            if p1 in param_values:
+                raise ParseError(num, f"metadata '{p1}' given twice")
+            if p1 == "zone" and p2 not in ZONE_INFO:
+                raise ParseError(num, f"invalid zone type '{p2}'")
+            param_values[p1] = p2
 
         return param_values
 
