@@ -1,3 +1,4 @@
+from errors import SimulationError
 from zone import ZONE_INFO, Zone
 
 
@@ -22,7 +23,7 @@ class Drone:
             self.index += 1
             self.move_cost -= ZONE_INFO[self.drone_path[self.index].zone_status].cost
         else:
-            raise ValueError
+            raise SimulationError(f"D{self._drone_id} is already on the end")
 
     def return_position(self) -> str:
         return self.drone_path[self.index].name
