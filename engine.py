@@ -1,3 +1,4 @@
+from errors import SimulationError
 from parser import Map
 from zone import Zone
 from drone import Drone
@@ -91,7 +92,7 @@ class Engine:
         while self.not_all_arrived():
             turn = len(self.backup) + 1
             moves: list[str] = []
-            links_used: list[frozenset] = []
+            links_used: list[frozenset[str]] = []
             drones_sorted = sorted(self.drone_list, key=Drone.key_tuple)
 
             for drone in drones_sorted:
@@ -102,7 +103,10 @@ class Engine:
                 if drone.flyin:
                     next_zone = drone.drone_path[drone.index + 1].name
                     if not self.zone_state[next_zone].free_spot():
-                        raise ValueError  # to change by custome error
+                        raise SimulationError(
+                            f"turn {turn}: D{drone.drone_id} cannot land on "
+                            f"'{next_zone}' (zone full)"
+                        )
                     self.zone_state[next_zone].del_slot()
                     drone.switch_mode()
                     link_to_free = frozenset(
@@ -138,7 +142,7 @@ class Engine:
                 self.links[el].add_slot()
 
             if not moves:
-                raise ValueError  # to change by custome error
+                raise SimulationError(f"turn {turn}: no drone can move")
 
             self.backup.append(moves)
 
